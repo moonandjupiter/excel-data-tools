@@ -1,208 +1,176 @@
-(function () {
-    "use strict";
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Excel Data Tools</title>
 
-    // Wait for the DOM to be loaded before initializing anything.
-    document.addEventListener('DOMContentLoaded', initialize);
+    <!-- Office JavaScript API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
-    function initialize() {
-        // --- UI Initialization ---
-        document.getElementById("tab-inserter").onclick = () => switchTab('inserter');
-        document.getElementById("tab-cleanser").onclick = () => switchTab('cleanser');
-        document.getElementById("tab-gemini").onclick = () => switchTab('gemini');
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Styles for a native Excel look -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #ffffff;
+            color: #212529;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevents scrolling of the whole pane */
+        }
+
+        .taskpane {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+        }
+
+        .tab-button {
+            flex-grow: 1;
+            padding: 12px 10px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 500;
+            color: #495057;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .tab-button:hover {
+            background-color: #e9ecef;
+            color: #0056b3;
+        }
+
+        .tab-button.active-tab {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+
+        .tab-content {
+            flex-grow: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #343a40;
+        }
+
+        .input, .textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .input:focus, .textarea:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            color: #fff;
+            background-color: #007bff;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out;
+        }
         
-        document.getElementById("generate-rows").onclick = generateAndInsertRows;
-        document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
-        document.getElementById("process-gemini").onclick = processWithGemini;
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
 
-        document.getElementById('rowCount').onfocus = function() { this.select(); };
-        document.getElementById('rawData').onfocus = function() { this.select(); };
-        document.getElementById('gemini-input').onfocus = function() { this.select(); };
-
-        switchTab('inserter');
-
-        // --- Office-Specific Initialization ---
-        Office.onReady(function (info) {
-            // Office host is ready.
-        });
-    }
-
-    function switchTab(tabName) {
-        // Hide all content panels
-        document.getElementById('inserter-content').style.display = 'none';
-        document.getElementById('cleanser-content').style.display = 'none';
-        document.getElementById('gemini-content').style.display = 'none';
+        .btn:hover {
+            background-color: #0056b3;
+        }
         
-        // Deactivate all tab buttons
-        document.getElementById('tab-inserter').classList.remove('active-tab');
-        document.getElementById('tab-cleanser').classList.remove('active-tab');
-        document.getElementById('tab-gemini').classList.remove('active-tab');
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .status {
+            margin-top: 12px;
+            font-size: 13px;
+            text-align: center;
+            color: #6c757d;
+            height: 18px; /* Reserve space to prevent layout shifts */
+        }
+    </style>
+</head>
+<body class="taskpane">
+
+    <div class="tabs">
+        <button id="tab-inserter" class="tab-button">Row Inserter</button>
+        <button id="tab-cleanser" class="tab-button">Data Cleanser</button>
+        <button id="tab-gemini" class="tab-button">Gemini Tool</button>
+    </div>
+
+    <div id="inserter-content" class="tab-content" style="display: none;">
+        <div class="form-group">
+            <label for="rowCount" class="label">Number of Rows to Insert</label>
+            <input type="number" id="rowCount" class="input" placeholder="e.g., 10">
+        </div>
+        <button id="generate-rows" class="btn">Insert Rows</button>
+        <p id="rowStatus" class="status"></p>
+    </div>
+
+    <div id="cleanser-content" class="tab-content" style="display: none;">
+        <div class="form-group">
+            <label for="rawData" class="label">Paste Raw Data</label>
+            <textarea id="rawData" rows="8" class="textarea" placeholder="e.g., 17P-07 to 09"></textarea>
+        </div>
+        <button id="cleanse-data" class="btn">Cleanse & Paste Data</button>
+        <p id="cleanseStatus" class="status"></p>
+    </div>
+
+    <div id="gemini-content" class="tab-content" style="display: none;">
+        <div class="form-group">
+            <label for="gemini-input" class="label">Paste Complex Data</label>
+            <textarea id="gemini-input" rows="6" class="textarea" placeholder="e.g., SN: 200108F & 200107F, Brand: Arrow..."></textarea>
+        </div>
+        <button id="process-gemini" class="btn">Process & Paste</button>
+        <p id="gemini-status" class="status"></p>
         
-        // Show the selected content panel and activate the corresponding tab
-        document.getElementById(tabName + '-content').style.display = 'block';
-        document.getElementById('tab-' + tabName).classList.add('active-tab');
-    }
+        <div id="gemini-output-container" class="form-group mt-4" style="display: none;">
+            <label for="gemini-output" class="label">Gemini Result</label>
+            <textarea id="gemini-output" rows="6" class="textarea" readonly></textarea>
+            <button id="copy-gemini-result" class="btn btn-secondary mt-2">Copy Result</button>
+        </div>
+    </div>
 
-    async function generateAndInsertRows() {
-        const rowCountInput = document.getElementById('rowCount');
-        const count = parseInt(rowCountInput.value, 10);
-        const status = document.getElementById('rowStatus');
+    <script type="text/javascript" src="app.js"></script>
 
-        if (isNaN(count) || count < 1) {
-            status.textContent = 'Please enter a valid number.';
-            setTimeout(() => { status.textContent = ''; }, 2000);
-            return;
-        }
-
-        if (typeof Excel === 'undefined') {
-            status.textContent = 'This feature only works inside Excel.';
-            return;
-        }
-
-        try {
-            await Excel.run(async (context) => {
-                const sheet = context.workbook.worksheets.getActiveWorksheet();
-                const range = context.workbook.getSelectedRange();
-                
-                const lastRowOfSelection = range.getEntireRow().getLastRow();
-                lastRowOfSelection.load("rowIndex");
-                await context.sync();
-
-                const insertStartRow = lastRowOfSelection.rowIndex + 2;
-                const insertEndRow = insertStartRow + count - 1;
-                const rangeAddress = `${insertStartRow}:${insertEndRow}`;
-                
-                sheet.getRange(rangeAddress).insert(Excel.InsertShiftDirection.down);
-                
-                await context.sync();
-                status.textContent = `Successfully inserted ${count} row(s).`;
-            });
-        } catch (error) {
-            console.error(error);
-            status.textContent = 'Error: Could not insert rows.';
-        }
-        setTimeout(() => { status.textContent = ''; }, 3000);
-    }
-
-    async function cleanseAndPasteData() {
-        const rawData = document.getElementById('rawData').value;
-        const cleansedData = parseData(rawData);
-        const status = document.getElementById('cleanseStatus');
-
-        if (cleansedData.length === 0) {
-            status.textContent = rawData.trim() ? 'Could not parse data.' : 'No data to paste.';
-            setTimeout(() => { status.textContent = ''; }, 3000);
-            return;
-        }
-
-        if (typeof Excel === 'undefined') {
-            status.textContent = 'This feature only works inside Excel.';
-            console.log("Cleansed Data (Browser Mode):", cleansedData);
-            return;
-        }
-
-        try {
-            await Excel.run(async (context) => {
-                const sheet = context.workbook.worksheets.getActiveWorksheet();
-                const selection = context.workbook.getSelectedRange();
-                selection.load("rowIndex", "columnIndex");
-                await context.sync();
-
-                const dataToInsert = cleansedData.map(item => [item]);
-                const targetRange = sheet.getRangeByIndexes(selection.rowIndex, selection.columnIndex, dataToInsert.length, 1);
-                targetRange.values = dataToInsert;
-
-                await context.sync();
-                status.textContent = `Successfully pasted ${cleansedData.length} items.`;
-            });
-        } catch (error) {
-            console.error(error);
-            status.textContent = 'Error: Could not paste data.';
-        }
-        setTimeout(() => { status.textContent = ''; }, 3000);
-    }
-    
-    async function processWithGemini() {
-        const input = document.getElementById('gemini-input').value.trim();
-        const status = document.getElementById('gemini-status');
-        const button = document.getElementById('process-gemini');
-
-        if (!input) {
-            status.textContent = 'Please enter some data to process.';
-            setTimeout(() => { status.textContent = ''; }, 3000);
-            return;
-        }
-
-        if (typeof Excel === 'undefined') {
-            status.textContent = 'This feature only works inside Excel.';
-            return;
-        }
-
-        button.disabled = true;
-        status.textContent = 'Processing with Gemini...';
-
-        try {
-            const prompt = `
-                You are a highly efficient data cleansing and expansion tool. Your task is to take a compressed or ranged string of data and expand it into a list where each line represents a single, complete item. The output should be plain text, with one item per line, and nothing else.
-
-                Follow these rules strictly:
-                1. Maintain the full prefix (the part of the string before the serial number, model, or item identifier).
-                2. Expand ranges. For example, "10702P to 10704P" becomes three separate lines.
-                3. Expand abbreviated serial numbers. For example, if the input is "HP DL380p Gen8 S#SGH438WACA,...WAC8", the second entry should be completed to "HP DL380p Gen8 S#SGH438WAC8".
-                4. Handle complex formats where the description comes after the serial numbers, like "SN: 200108F & 200107F, Brand: Arrow...". Each output line must contain the full description.
-
-                Input Data to process:
-                ${input}
-                
-                Final Output:
-            `;
-
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { temperature: 0 },
-            };
-            const apiKey = ""; // Canvas will provide this.
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) throw new Error(`API call failed: ${response.status}`);
-
-            const result = await response.json();
-            const generatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (!generatedText) throw new Error("No text generated by the model.");
-
-            const cleansedData = generatedText.trim().split('\n');
-
-            await Excel.run(async (context) => {
-                const sheet = context.workbook.worksheets.getActiveWorksheet();
-                const selection = context.workbook.getSelectedRange();
-                selection.load("rowIndex", "columnIndex");
-                await context.sync();
-
-                const dataToInsert = cleansedData.map(item => [item]);
-                const targetRange = sheet.getRangeByIndexes(selection.rowIndex, selection.columnIndex, dataToInsert.length, 1);
-                targetRange.values = dataToInsert;
-                await context.sync();
-                status.textContent = `Successfully pasted ${cleansedData.length} items.`;
-            });
-
-        } catch (error) {
-            console.error(error);
-            status.textContent = 'Error: Could not process data.';
-        } finally {
-            button.disabled = false;
-            setTimeout(() => { status.textContent = ''; }, 4000);
-        }
-    }
-
-    function parseData(rawData) {
-        // ... (This function remains unchanged from the previous version)
-    }
-
-})();
+</body>
+</html>
 
