@@ -62,6 +62,12 @@
         const cleansedData = parseData(rawData);
         const status = document.getElementById('cleanseStatus');
 
+        if (cleansedData.length === 0 && rawData.trim() !== '') {
+             status.textContent = 'Could not parse data.';
+             setTimeout(() => { status.textContent = ''; }, 3000);
+             return;
+        }
+        
         if (cleansedData.length === 0) {
             status.textContent = 'No data to paste.';
             setTimeout(() => { status.textContent = ''; }, 3000);
@@ -89,76 +95,73 @@
         setTimeout(() => { status.textContent = ''; }, 3000);
     }
 
-    function tryParseRange(line) {
-        const results = [];
-        const rangeMatch = line.match(/(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
-        if (rangeMatch) {
-            const prefix = rangeMatch[1].trim();
-            const startStr = rangeMatch[2];
-            const endStr = rangeMatch[3];
-            const startNum = parseInt(startStr, 10);
-            const endNum = parseInt(endStr, 10);
-            const padLength = startStr.length;
-
-            if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-                for (let i = startNum; i <= endNum; i++) {
-                    const paddedNum = String(i).padStart(padLength, '0');
-                    results.push(`${prefix}${paddedNum}`);
-                }
-            }
-        }
-        return results;
-    }
-
-    function tryParseSerialNumbers(line) {
-        const results = [];
-        const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
-        if (snKeywordMatch) {
-            const snIndex = snKeywordMatch.index;
-            const description = line.substring(0, snIndex).trim();
-            const keyword = snKeywordMatch[0];
-            const serialsString = line.substring(snIndex + keyword.length).trim();
-            const serialParts = serialsString.split(/[,/&;]|\s+/).filter(p => p.trim() !== '');
-            
-            let lastPrefix = "";
-
-            for (const part of serialParts) {
-                let currentSerial = part.replace(/\.+/g, '').trim();
-                if (!currentSerial) continue;
-
-                if (isNaN(currentSerial) || currentSerial.length > 6 || !lastPrefix) {
-                    const match = currentSerial.match(/^(.*?)(\d+)$/);
-                    if (match) {
-                        lastPrefix = match[1];
-                    } else {
-                        lastPrefix = currentSerial;
-                    }
-                } else {
-                    currentSerial = lastPrefix + currentSerial;
-                }
-                results.push(`${description} ${keyword} ${currentSerial}`);
-            }
-        }
-        return results;
-    }
-
     function parseData(rawData) {
+        const allCleansedLines = [];
         const lines = rawData.split('\n').filter(line => line.trim() !== '');
-        let allCleansedLines = [];
 
-        for (const line of lines) {
-            let processedLines = tryParseRange(line);
+        lines.forEach(line => {
+            let results = [];
+            let processed = false;
 
-            if (processedLines.length === 0) {
-                processedLines = tryParseSerialNumbers(line);
+            // Pattern 1: Simple Ranges (e.g., "17P-07 to 09")
+            const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
+            if (rangeMatch) {
+                const prefix = rangeMatch[1].trim();
+                const startStr = rangeMatch[2];
+                const endStr = rangeMatch[3];
+                const startNum = parseInt(startStr, 10);
+                const endNum = parseInt(endStr, 10);
+                const padLength = startStr.length;
+
+                if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+                    for (let i = startNum; i <= endNum; i++) {
+                        results.push(`${prefix}${String(i).padStart(padLength, '0')}`);
+                    }
+                    if (results.length > 0) processed = true;
+                }
             }
 
-            if (processedLines.length === 0 && line.trim()) {
-                allCleansedLines.push(line.trim());
+            // Pattern 2: Serial Number Lists
+            if (!processed) {
+                const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
+                if (snKeywordMatch) {
+                    const snIndex = snKeywordMatch.index;
+                    const description = line.substring(0, snIndex).trim();
+                    const keyword = snKeywordMatch[0];
+                    const serialsString = line.substring(snIndex + keyword.length).trim();
+                    const serialParts = serialsString.split(/[,/&;]|\s+/).filter(p => p && p.trim() !== '' && !p.startsWith('.'));
+                    
+                    if (serialParts.length > 0) {
+                        let lastPrefix = "";
+                        let fullDescription = `${description} ${keyword}`;
+
+                        serialParts.forEach(part => {
+                            let currentSerial = part.trim();
+                            
+                            if (/[a-zA-Z-]/.test(currentSerial) || currentSerial.length > 6 || !lastPrefix) {
+                                 const match = currentSerial.match(/^(.*?)(\d+)$/);
+                                 if (match) {
+                                     lastPrefix = match[1];
+                                 } else {
+                                     lastPrefix = ''; 
+                                 }
+                                 results.push(`${fullDescription} ${currentSerial}`);
+                            } else {
+                                results.push(`${fullDescription} ${lastPrefix}${currentSerial}`);
+                            }
+                        });
+                        if (results.length > 0) processed = true;
+                    }
+                }
+            }
+            
+            // Final decision: push the results or fall back to the original line
+            if (processed) {
+                allCleansedLines.push(...results);
             } else {
-                allCleansedLines.push(...processedLines);
+                allCleansedLines.push(line.trim());
             }
-        }
+        });
 
         return allCleansedLines;
     }
