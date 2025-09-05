@@ -12,6 +12,11 @@
         document.getElementById("generate-rows").onclick = generateAndInsertRows;
         document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
 
+        // Restore the "click to select all" functionality for the text inputs.
+        document.getElementById('rowCount').onclick = function() { this.select(); };
+        document.getElementById('rawData').onclick = function() { this.select(); };
+
+
         // Set the initial tab view.
         switchTab('inserter');
 
@@ -50,7 +55,7 @@
         }
 
         // Check if we are running inside Excel before using the Excel API.
-        if (!window.Excel) {
+        if (typeof Excel === 'undefined') {
             status.textContent = 'This feature only works inside Excel.';
             console.error("Excel API is not available in this context.");
             setTimeout(() => { status.textContent = ''; }, 3000);
@@ -90,7 +95,7 @@
         }
 
         // Check if we are running inside Excel before using the Excel API.
-        if (!window.Excel) {
+        if (typeof Excel === 'undefined') {
             status.textContent = 'This feature only works inside Excel.';
             console.error("Excel API is not available in this context.");
             // For browser testing, you can log the output to see if parsing works.
@@ -119,7 +124,7 @@
         }
         setTimeout(() => { status.textContent = ''; }, 3000);
     }
-
+    
     function parseData(rawData) {
         const allCleansedLines = [];
         const lines = rawData.split('\n').filter(line => line.trim() !== '');
@@ -146,41 +151,42 @@
                 }
             }
 
-            // Pattern 2: Serial Number Lists
+            // Pattern 2: Serial Number Lists with implied prefixes
             if (!processed) {
-                const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
-                if (snKeywordMatch) {
-                    const snIndex = snKeywordMatch.index;
-                    const description = line.substring(0, snIndex).trim();
-                    const keyword = snKeywordMatch[0];
-                    const serialsString = line.substring(snIndex + keyword.length).trim();
-                    const serialParts = serialsString.split(/[,/&;]|\s+/).filter(p => p && p.trim() !== '' && !p.startsWith('.'));
-                    
-                    if (serialParts.length > 0) {
-                        let lastPrefix = "";
-                        let fullDescription = `${description} ${keyword}`;
+                 if (line.includes(',') || line.includes('&') || line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i)) {
+                    let description = '';
+                    let serialsString = line;
+                    const snKeywordMatch = line.match(/(.*?)(S#s|S#|SN:|Ser\. No\.|SN)\s*(.*)/i);
 
-                        serialParts.forEach(part => {
-                            let currentSerial = part.trim();
-                            
-                            if (/[a-zA-Z-]/.test(currentSerial) || currentSerial.length > 6 || !lastPrefix) {
-                                 const match = currentSerial.match(/^(.*?)(\d+)$/);
-                                 if (match) {
-                                     lastPrefix = match[1];
-                                 } else {
-                                     lastPrefix = ''; 
-                                 }
-                                 results.push(`${fullDescription} ${currentSerial}`);
-                            } else {
-                                results.push(`${fullDescription} ${lastPrefix}${currentSerial}`);
-                            }
-                        });
-                        if (results.length > 0) processed = true;
+                    if (snKeywordMatch) {
+                        description = `${snKeywordMatch[1]}${snKeywordMatch[2]} `.trim();
+                        serialsString = snKeywordMatch[3];
                     }
+
+                    const parts = serialsString.split(/[,/&]|\s+/).filter(p => p && p.trim() !== '');
+                    let lastPrefix = '';
+
+                    parts.forEach(part => {
+                        let currentSerial = part.trim();
+                        if (!currentSerial) return;
+
+                        if (/[a-zA-Z-]/.test(currentSerial)) {
+                            results.push(`${description}${currentSerial}`);
+                            const match = currentSerial.match(/^(.*?)(\d+)$/);
+                            if (match) {
+                                lastPrefix = match[1];
+                            }
+                        } else if (lastPrefix) {
+                            results.push(`${description}${lastPrefix}${currentSerial}`);
+                        } else {
+                            results.push(`${description}${currentSerial}`);
+                        }
+                    });
+                    
+                    if (results.length > 0) processed = true;
                 }
             }
             
-            // Final decision: push the results or fall back to the original line
             if (processed) {
                 allCleansedLines.push(...results);
             } else {
@@ -190,5 +196,6 @@
 
         return allCleansedLines;
     }
+
 })();
 
