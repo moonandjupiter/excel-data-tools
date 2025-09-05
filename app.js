@@ -88,7 +88,8 @@
             await Excel.run(async (context) => {
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const selection = context.workbook.getSelectedRange();
-                selection.load("rowIndex", "columnIndex");
+                // Correctly load both properties in a single, comma-delimited string.
+                selection.load("rowIndex, columnIndex");
                 await context.sync();
 
                 const dataToInsert = cleansedData.map(item => [item]);
