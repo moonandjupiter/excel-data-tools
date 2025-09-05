@@ -1,19 +1,25 @@
 (function () {
     "use strict";
 
-    // The initialize function must be run each time a new page is loaded.
-    Office.onReady(function (info) {
-        if (info.host === Office.HostType.Excel) {
-            // Assign event handlers and other initialization logic.
-            document.getElementById("tab-inserter").onclick = () => switchTab('inserter');
-            document.getElementById("tab-cleanser").onclick = () => switchTab('cleanser');
-            document.getElementById("generate-rows").onclick = generateAndInsertRows;
-            document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
+    // This function will run once the DOM is fully loaded and ready.
+    function initialize() {
+        // The initialize function must be run each time a new page is loaded.
+        Office.onReady(function (info) {
+            if (info.host === Office.HostType.Excel) {
+                // Now it's safe to assign event handlers because the elements exist.
+                document.getElementById("tab-inserter").onclick = () => switchTab('inserter');
+                document.getElementById("tab-cleanser").onclick = () => switchTab('cleanser');
+                document.getElementById("generate-rows").onclick = generateAndInsertRows;
+                document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
 
-            // Set the initial tab
-            switchTab('inserter');
-        }
-    });
+                // Set the initial tab
+                switchTab('inserter');
+            }
+        });
+    }
+    
+    // Wait for the DOM to be loaded before initializing the add-in.
+    document.addEventListener('DOMContentLoaded', initialize);
 
     function switchTab(tabName) {
         document.getElementById('inserter-content').style.display = 'none';
