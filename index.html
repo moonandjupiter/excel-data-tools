@@ -105,9 +105,18 @@
             cursor: pointer;
             transition: background-color 0.15s ease-in-out;
         }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
 
         .btn:hover {
             background-color: #0056b3;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #5a6268;
         }
 
         .status {
@@ -148,10 +157,16 @@
     <div id="gemini-content" class="tab-content" style="display: none;">
         <div class="form-group">
             <label for="gemini-input" class="label">Paste Complex Data</label>
-            <textarea id="gemini-input" rows="8" class="textarea" placeholder="e.g., SN: 200108F & 200107F, Brand: Arrow..."></textarea>
+            <textarea id="gemini-input" rows="6" class="textarea" placeholder="e.g., SN: 200108F & 200107F, Brand: Arrow..."></textarea>
         </div>
-        <button id="process-gemini" class="btn">Process with Gemini</button>
+        <button id="process-gemini" class="btn">Process & Paste</button>
         <p id="gemini-status" class="status"></p>
+        
+        <div id="gemini-output-container" class="form-group mt-4" style="display: none;">
+            <label for="gemini-output" class="label">Gemini Result</label>
+            <textarea id="gemini-output" rows="6" class="textarea" readonly></textarea>
+            <button id="copy-gemini-result" class="btn btn-secondary mt-2">Copy Result</button>
+        </div>
     </div>
 
     <script type="text/javascript" src="app.js"></script>
