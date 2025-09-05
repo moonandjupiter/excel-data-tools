@@ -63,6 +63,11 @@
             padding: 16px;
             overflow-y: auto;
         }
+        
+        /* This rule was missing */
+        .hidden {
+            display: none;
+        }
 
         .form-group {
             margin-bottom: 16px;
@@ -136,7 +141,8 @@
         <button id="tab-gemini" class="tab-button">Gemini Tool</button>
     </div>
 
-    <div id="inserter-content" class="tab-content" style="display: none;">
+    <!-- The 'hidden' class is now used for consistency -->
+    <div id="inserter-content" class="tab-content hidden">
         <div class="form-group">
             <label for="rowCount" class="label">Number of Rows to Insert</label>
             <input type="number" id="rowCount" class="input" placeholder="e.g., 10">
@@ -145,7 +151,7 @@
         <p id="rowStatus" class="status"></p>
     </div>
 
-    <div id="cleanser-content" class="tab-content" style="display: none;">
+    <div id="cleanser-content" class="tab-content hidden">
         <div class="form-group">
             <label for="rawData" class="label">Paste Raw Data</label>
             <textarea id="rawData" rows="8" class="textarea" placeholder="e.g., 17P-07 to 09"></textarea>
@@ -154,15 +160,15 @@
         <p id="cleanseStatus" class="status"></p>
     </div>
 
-    <div id="gemini-content" class="tab-content" style="display: none;">
+    <div id="gemini-content" class="tab-content hidden">
         <div class="form-group">
             <label for="gemini-input" class="label">Paste Complex Data</label>
             <textarea id="gemini-input" rows="6" class="textarea" placeholder="e.g., SN: 200108F & 200107F, Brand: Arrow..."></textarea>
         </div>
-        <button id="process-gemini" class="btn">Process & Paste</button>
+        <button id="process-gemini" class="btn">Process with Local Gemini</button>
         <p id="gemini-status" class="status"></p>
         
-        <div id="gemini-output-container" class="form-group mt-4" style="display: none;">
+        <div id="gemini-output-container" class="form-group mt-4 hidden">
             <label for="gemini-output" class="label">Gemini Result</label>
             <textarea id="gemini-output" rows="6" class="textarea" readonly></textarea>
             <button id="copy-gemini-result" class="btn btn-secondary mt-2">Copy Result</button>
