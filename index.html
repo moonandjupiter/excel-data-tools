@@ -1,77 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Tools</title>
-    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Excel Data Tools</title>
+
+    <!-- Office JavaScript API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- App Logic -->
+    <script type="text/javascript" src="app.js"></script>
+
     <style>
-        /* Using Segoe UI to match the native Office font */
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #fafafa; /* A slightly off-white to match Excel's pane */
-        }
-        .tab-active {
-            border-color: #285e8d; /* A standard Office blue */
-            color: #285e8d;
-        }
-        /* Custom focus rings for better accessibility that match the theme */
-        input:focus, textarea:focus {
-            border-color: #285e8d !important;
-            box-shadow: 0 0 0 1px #285e8d !important;
+        /* A simple style for the active tab */
+        .active-tab {
+            color: #2b6cb0; /* blue-700 */
+            border-bottom: 2px solid #2b6cb0;
+            background-color: #f7fafc; /* gray-100 */
         }
     </style>
 </head>
-<body class="bg-white">
-    <div class="w-full max-w-xl mx-auto">
+<body class="bg-white m-0 p-0 font-sans">
+    <main class="h-full">
         <!-- Tab Navigation -->
-        <div class="border-b border-gray-200">
-            <nav class="-mb-px flex space-x-4 px-4" aria-label="Tabs">
-                <button onclick="switchTab('rowInserter')" id="tab-rowInserter" class="tab-active whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm transition-colors duration-200">
-                    Row Inserter
-                </button>
-                <button onclick="switchTab('dataCleanser')" id="tab-dataCleanser" class="border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-400 whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm transition-colors duration-200">
-                    Data Cleanser
-                </button>
-            </nav>
+        <div class="flex border-b border-gray-200">
+            <!-- IMPORTANT: The onclick attributes have been removed from these buttons -->
+            <button id="tab-inserter" class="flex-1 py-2 px-4 text-center font-semibold text-gray-700 hover:bg-gray-200 focus:outline-none">
+                Row Inserter
+            </button>
+            <button id="tab-cleanser" class="flex-1 py-2 px-4 text-center font-semibold text-gray-500 hover:bg-gray-200 focus:outline-none">
+                Data Cleanser
+            </button>
         </div>
 
-        <!-- Tab Content -->
+        <!-- Content Panes -->
         <div class="p-4">
             <!-- Excel Row Inserter Tool -->
-            <div id="content-rowInserter">
-                <div class="space-y-3">
-                    <div>
-                        <label for="rowCount" class="block text-sm font-semibold text-gray-800 mb-1">Number of rows:</label>
-                        <input type="number" id="rowCount" onclick="this.select()" class="w-full p-2 border border-gray-300 rounded-sm focus:outline-none" placeholder="e.g., 5" min="1">
-                    </div>
-                    <button onclick="insertRows()" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 transition-colors duration-200">
-                        Insert Rows
-                    </button>
-                     <p id="rowStatus" class="text-center text-sm text-blue-700 font-semibold h-5"></p>
-                </div>
+            <div id="inserter-content">
+                <label for="rowCount" class="text-sm font-semibold text-gray-700 block mb-1">Number of rows to insert:</label>
+                <input type="number" id="rowCount" placeholder="e.g., 5" class="p-2 border border-gray-300 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="generate-rows" class="mt-3 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 focus:outline-none">Insert Rows</button>
+                <p id="rowStatus" class="text-xs text-gray-600 mt-2 h-4"></p>
             </div>
 
             <!-- Data Cleansing Tool -->
-            <div id="content-dataCleanser" class="hidden">
-                 <div class="space-y-3">
-                    <div>
-                        <label for="rawData" class="block text-sm font-semibold text-gray-800 mb-1">Paste Raw Data:</label>
-                        <textarea id="rawData" onclick="this.select()" class="w-full h-48 p-2 border border-gray-300 rounded-sm focus:outline-none" placeholder="e.g., 24P-449 to 482..."></textarea>
-                    </div>
-                    <button onclick="cleanseAndPasteData()" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 transition-colors duration-200">
-                        Cleanse & Paste Data
-                    </button>
-                    <p id="status" class="text-center text-sm text-blue-700 font-semibold h-5"></p>
-                </div>
+            <div id="cleanser-content" style="display: none;">
+                <label for="rawData" class="text-sm font-semibold text-gray-700 block mb-1">Paste Raw Data:</label>
+                <textarea id="rawData" rows="5" placeholder="e.g., 24P-449 to 482..." class="p-2 border border-gray-300 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                <button id="cleanse-data" class="mt-3 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 focus:outline-none">Cleanse & Paste Data</button>
+                <p id="cleanseStatus" class="text-xs text-gray-600 mt-2 h-4"></p>
             </div>
         </div>
-    </div>
-    <script src="app.js"></script>
+    </main>
 </body>
 </html>
 
