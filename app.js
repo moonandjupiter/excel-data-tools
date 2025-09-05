@@ -1,34 +1,41 @@
 (function () {
     "use strict";
 
-    // This function will run once the DOM is fully loaded and ready.
-    function initialize() {
-        // The initialize function must be run each time a new page is loaded.
-        Office.onReady(function (info) {
-            if (info.host === Office.HostType.Excel) {
-                // Now it's safe to assign event handlers because the elements exist.
-                document.getElementById("tab-inserter").onclick = () => switchTab('inserter');
-                document.getElementById("tab-cleanser").onclick = () => switchTab('cleanser');
-                document.getElementById("generate-rows").onclick = generateAndInsertRows;
-                document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
-
-                // Set the initial tab
-                switchTab('inserter');
-            }
-        });
-    }
-    
-    // Wait for the DOM to be loaded before initializing the add-in.
+    // Wait for the DOM to be loaded before initializing anything.
     document.addEventListener('DOMContentLoaded', initialize);
 
+    function initialize() {
+        // --- UI Initialization ---
+        // Assign event handlers for the UI elements that should work everywhere, including a browser.
+        document.getElementById("tab-inserter").onclick = () => switchTab('inserter');
+        document.getElementById("tab-cleanser").onclick = () => switchTab('cleanser');
+        document.getElementById("generate-rows").onclick = generateAndInsertRows;
+        document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
+
+        // Set the initial tab view.
+        switchTab('inserter');
+
+        // --- Office-Specific Initialization ---
+        // Office.onReady is used to ensure the Office host is ready before we try to use its APIs.
+        Office.onReady(function (info) {
+            // You can add any host-specific logic here. For now, it's just confirming readiness.
+        });
+    }
+
     function switchTab(tabName) {
+        // Hide both content panes
         document.getElementById('inserter-content').style.display = 'none';
         document.getElementById('cleanser-content').style.display = 'none';
-        document.getElementById('tab-inserter').classList.remove('active');
-        document.getElementById('tab-cleanser').classList.remove('active');
+        
+        // Remove the active style from both tab buttons
+        document.getElementById('tab-inserter').classList.remove('active-tab');
+        document.getElementById('tab-cleanser').classList.remove('active-tab');
 
+        // Show the selected content pane
         document.getElementById(tabName + '-content').style.display = 'block';
-        document.getElementById('tab-' + tabName).classList.add('active');
+        
+        // Add the active style to the selected tab button
+        document.getElementById('tab-' + tabName).classList.add('active-tab');
     }
 
     async function generateAndInsertRows() {
@@ -39,6 +46,14 @@
         if (isNaN(count) || count < 1) {
             status.textContent = 'Please enter a valid number.';
             setTimeout(() => { status.textContent = ''; }, 2000);
+            return;
+        }
+
+        // Check if we are running inside Excel before using the Excel API.
+        if (!window.Excel) {
+            status.textContent = 'This feature only works inside Excel.';
+            console.error("Excel API is not available in this context.");
+            setTimeout(() => { status.textContent = ''; }, 3000);
             return;
         }
 
@@ -68,14 +83,18 @@
         const cleansedData = parseData(rawData);
         const status = document.getElementById('cleanseStatus');
 
-        if (cleansedData.length === 0 && rawData.trim() !== '') {
-             status.textContent = 'Could not parse data.';
-             setTimeout(() => { status.textContent = ''; }, 3000);
-             return;
-        }
-        
         if (cleansedData.length === 0) {
-            status.textContent = 'No data to paste.';
+            status.textContent = rawData.trim() ? 'Could not parse data.' : 'No data to paste.';
+            setTimeout(() => { status.textContent = ''; }, 3000);
+            return;
+        }
+
+        // Check if we are running inside Excel before using the Excel API.
+        if (!window.Excel) {
+            status.textContent = 'This feature only works inside Excel.';
+            console.error("Excel API is not available in this context.");
+            // For browser testing, you can log the output to see if parsing works.
+            console.log("Cleansed Data (Browser Mode):", cleansedData);
             setTimeout(() => { status.textContent = ''; }, 3000);
             return;
         }
