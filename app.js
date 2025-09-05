@@ -6,40 +6,31 @@
 
     function initialize() {
         // --- UI Initialization ---
-        // Assign event handlers for the UI elements that should work everywhere, including a browser.
+        // Assign event handlers for the UI elements.
         document.getElementById("tab-inserter").onclick = () => switchTab('inserter');
         document.getElementById("tab-cleanser").onclick = () => switchTab('cleanser');
         document.getElementById("generate-rows").onclick = generateAndInsertRows;
         document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
 
-        // Restore the "click to select all" functionality for the text inputs.
-        document.getElementById('rowCount').onclick = function() { this.select(); };
-        document.getElementById('rawData').onclick = function() { this.select(); };
-
+        // Restore the "focus to select all" functionality.
+        document.getElementById('rowCount').onfocus = function() { this.select(); };
+        document.getElementById('rawData').onfocus = function() { this.select(); };
 
         // Set the initial tab view.
         switchTab('inserter');
 
         // --- Office-Specific Initialization ---
-        // Office.onReady is used to ensure the Office host is ready before we try to use its APIs.
         Office.onReady(function (info) {
-            // You can add any host-specific logic here. For now, it's just confirming readiness.
+            // Office host is ready.
         });
     }
 
     function switchTab(tabName) {
-        // Hide both content panes
         document.getElementById('inserter-content').style.display = 'none';
         document.getElementById('cleanser-content').style.display = 'none';
-        
-        // Remove the active style from both tab buttons
         document.getElementById('tab-inserter').classList.remove('active-tab');
         document.getElementById('tab-cleanser').classList.remove('active-tab');
-
-        // Show the selected content pane
         document.getElementById(tabName + '-content').style.display = 'block';
-        
-        // Add the active style to the selected tab button
         document.getElementById('tab-' + tabName).classList.add('active-tab');
     }
 
@@ -54,31 +45,29 @@
             return;
         }
 
-        // Check if we are running inside Excel before using the Excel API.
         if (typeof Excel === 'undefined') {
             status.textContent = 'This feature only works inside Excel.';
-            console.error("Excel API is not available in this context.");
-            setTimeout(() => { status.textContent = ''; }, 3000);
             return;
         }
 
         try {
             await Excel.run(async (context) => {
-                const sheet = context.workbook.worksheets.getActiveWorksheet();
-                const selection = context.workbook.getSelectedRange();
-                selection.load("rowIndex, rowCount");
+                const range = context.workbook.getSelectedRange();
+                // Get the last row of the current selection.
+                const lastRow = range.getLastRow();
+                lastRow.load("rowIndex");
                 await context.sync();
 
-                const insertAtRow = selection.rowIndex + selection.rowCount;
-                for (let i = 0; i < count; i++) {
-                    sheet.getRangeByIndexes(insertAtRow, 0, 1, 1).insert(Excel.InsertShiftDirection.down);
-                }
+                // Define a range representing the 'count' of entire rows below the selection.
+                const rowsToInsert = lastRow.worksheet.getRangeByIndexes(lastRow.rowIndex + 1, 0, count, 0);
+                // Insert the new rows.
+                rowsToInsert.insert(Excel.InsertShiftDirection.down);
                 await context.sync();
                 status.textContent = `Successfully inserted ${count} row(s).`;
             });
         } catch (error) {
             console.error(error);
-            status.textContent = 'Error inserting rows.';
+            status.textContent = 'Error: Could not insert rows.';
         }
         setTimeout(() => { status.textContent = ''; }, 3000);
     }
@@ -94,13 +83,9 @@
             return;
         }
 
-        // Check if we are running inside Excel before using the Excel API.
         if (typeof Excel === 'undefined') {
             status.textContent = 'This feature only works inside Excel.';
-            console.error("Excel API is not available in this context.");
-            // For browser testing, you can log the output to see if parsing works.
             console.log("Cleansed Data (Browser Mode):", cleansedData);
-            setTimeout(() => { status.textContent = ''; }, 3000);
             return;
         }
 
@@ -120,7 +105,7 @@
             });
         } catch (error) {
             console.error(error);
-            status.textContent = 'Error pasting data.';
+            status.textContent = 'Error: Could not paste data.';
         }
         setTimeout(() => { status.textContent = ''; }, 3000);
     }
