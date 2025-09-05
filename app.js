@@ -43,13 +43,84 @@
     }
 
     async function generateAndInsertRows() {
-        // ... (This function remains unchanged)
+        const rowCountInput = document.getElementById('rowCount');
+        const count = parseInt(rowCountInput.value, 10);
+        const status = document.getElementById('rowStatus');
+
+        if (isNaN(count) || count < 1) {
+            status.textContent = 'Please enter a valid number.';
+            setTimeout(() => { status.textContent = ''; }, 2000);
+            return;
+        }
+
+        if (typeof Excel === 'undefined') {
+            status.textContent = 'This feature only works inside Excel.';
+            return;
+        }
+
+        try {
+            await Excel.run(async (context) => {
+                const sheet = context.workbook.worksheets.getActiveWorksheet();
+                const range = context.workbook.getSelectedRange();
+                
+                const lastRowOfSelection = range.getEntireRow().getLastRow();
+                lastRowOfSelection.load("rowIndex");
+                await context.sync();
+
+                const insertStartRow = lastRowOfSelection.rowIndex + 2;
+                const insertEndRow = insertStartRow + count - 1;
+                const rangeAddress = `${insertStartRow}:${insertEndRow}`;
+                
+                sheet.getRange(rangeAddress).insert(Excel.InsertShiftDirection.down);
+                
+                await context.sync();
+                status.textContent = `Successfully inserted ${count} row(s).`;
+            });
+        } catch (error) {
+            console.error(error);
+            status.textContent = 'Error: Could not insert rows.';
+        }
+        setTimeout(() => { status.textContent = ''; }, 3000);
     }
 
     async function cleanseAndPasteData() {
-        // ... (This function remains unchanged)
-    }
+        const rawData = document.getElementById('rawData').value;
+        const cleansedData = parseData(rawData);
+        const status = document.getElementById('cleanseStatus');
 
+        if (cleansedData.length === 0) {
+            status.textContent = rawData.trim() ? 'Could not parse data.' : 'No data to paste.';
+            setTimeout(() => { status.textContent = ''; }, 3000);
+            return;
+        }
+
+        if (typeof Excel === 'undefined') {
+            status.textContent = 'This feature only works inside Excel.';
+            console.log("Cleansed Data (Browser Mode):", cleansedData);
+            return;
+        }
+
+        try {
+            await Excel.run(async (context) => {
+                const sheet = context.workbook.worksheets.getActiveWorksheet();
+                const selection = context.workbook.getSelectedRange();
+                selection.load("rowIndex", "columnIndex");
+                await context.sync();
+
+                const dataToInsert = cleansedData.map(item => [item]);
+                const targetRange = sheet.getRangeByIndexes(selection.rowIndex, selection.columnIndex, dataToInsert.length, 1);
+                targetRange.values = dataToInsert;
+
+                await context.sync();
+                status.textContent = `Successfully pasted ${cleansedData.length} items.`;
+            });
+        } catch (error) {
+            console.error(error);
+            status.textContent = 'Error: Could not paste data.';
+        }
+        setTimeout(() => { status.textContent = ''; }, 3000);
+    }
+    
     async function processWithGemini() {
         const input = document.getElementById('gemini-input').value.trim();
         const status = document.getElementById('gemini-status');
@@ -110,7 +181,7 @@
             await Excel.run(async (context) => {
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const selection = context.workbook.getSelectedRange();
-                selection.load("rowIndex, columnIndex");
+                selection.load("rowIndex", "columnIndex");
                 await context.sync();
 
                 const dataToInsert = cleansedData.map(item => [item]);
@@ -130,7 +201,7 @@
     }
 
     function parseData(rawData) {
-        // ... (This function remains unchanged)
+        // ... (This function remains unchanged from the previous version)
     }
 
 })();
