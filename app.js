@@ -55,20 +55,19 @@
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const range = context.workbook.getSelectedRange();
                 
-                // Get the last row of the current selection to determine where to insert.
-                const lastRow = range.getLastRow();
-                lastRow.load("rowIndex");
+                // Use a more robust method to find the last row of the selection.
+                const lastRowOfSelection = range.getEntireRow().getLastRow();
+                lastRowOfSelection.load("rowIndex");
                 await context.sync();
 
-                // Calculate the A1-style address for the new rows.
-                // Row indices from the API are 0-based, but A1 notation is 1-based.
-                const insertStartRow = lastRow.rowIndex + 2; // +1 to get below the last row, +1 for 1-based index
+                // Calculate the A1-style address for the new rows to be inserted.
+                // API rowIndex is 0-based, so we add 2 to get the 1-based row number below the selection.
+                const insertStartRow = lastRowOfSelection.rowIndex + 2;
                 const insertEndRow = insertStartRow + count - 1;
                 const rangeAddress = `${insertStartRow}:${insertEndRow}`;
                 
-                // Get the range for the entire rows and insert.
-                const rangeToInsert = sheet.getRange(rangeAddress);
-                rangeToInsert.insert(Excel.InsertShiftDirection.down);
+                // Get the range for the entire rows and insert them.
+                sheet.getRange(rangeAddress).insert(Excel.InsertShiftDirection.down);
                 
                 await context.sync();
                 status.textContent = `Successfully inserted ${count} row(s).`;
