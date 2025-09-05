@@ -89,78 +89,74 @@
         setTimeout(() => { status.textContent = ''; }, 3000);
     }
 
+    function tryParseRange(line) {
+        const results = [];
+        const rangeMatch = line.match(/(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
+        if (rangeMatch) {
+            const prefix = rangeMatch[1].trim();
+            const startStr = rangeMatch[2];
+            const endStr = rangeMatch[3];
+            const startNum = parseInt(startStr, 10);
+            const endNum = parseInt(endStr, 10);
+            const padLength = startStr.length;
+
+            if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+                for (let i = startNum; i <= endNum; i++) {
+                    const paddedNum = String(i).padStart(padLength, '0');
+                    results.push(`${prefix}${paddedNum}`);
+                }
+            }
+        }
+        return results;
+    }
+
+    function tryParseSerialNumbers(line) {
+        const results = [];
+        const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
+        if (snKeywordMatch) {
+            const snIndex = snKeywordMatch.index;
+            const description = line.substring(0, snIndex).trim();
+            const keyword = snKeywordMatch[0];
+            const serialsString = line.substring(snIndex + keyword.length).trim();
+            const serialParts = serialsString.split(/[,/&;]|\s+/).filter(p => p.trim() !== '');
+            
+            let lastPrefix = "";
+
+            for (const part of serialParts) {
+                let currentSerial = part.replace(/\.+/g, '').trim();
+                if (!currentSerial) continue;
+
+                if (isNaN(currentSerial) || currentSerial.length > 6 || !lastPrefix) {
+                    const match = currentSerial.match(/^(.*?)(\d+)$/);
+                    if (match) {
+                        lastPrefix = match[1];
+                    } else {
+                        lastPrefix = currentSerial;
+                    }
+                } else {
+                    currentSerial = lastPrefix + currentSerial;
+                }
+                results.push(`${description} ${keyword} ${currentSerial}`);
+            }
+        }
+        return results;
+    }
+
     function parseData(rawData) {
         const lines = rawData.split('\n').filter(line => line.trim() !== '');
         let allCleansedLines = [];
 
         for (const line of lines) {
-            let processedLinesForThisLine = [];
-            let wasProcessed = false;
+            let processedLines = tryParseRange(line);
 
-            // Attempt to process as a range
-            const rangeMatch = line.match(/(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
-            if (rangeMatch) {
-                const prefix = rangeMatch[1].trim();
-                const startStr = rangeMatch[2];
-                const endStr = rangeMatch[3];
-                const startNum = parseInt(startStr, 10);
-                const endNum = parseInt(endStr, 10);
-                const padLength = startStr.length;
-
-                if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-                    for (let i = startNum; i <= endNum; i++) {
-                        const paddedNum = String(i).padStart(padLength, '0');
-                        processedLinesForThisLine.push(`${prefix}${paddedNum}`);
-                    }
-                    if (processedLinesForThisLine.length > 0) {
-                        wasProcessed = true;
-                    }
-                }
+            if (processedLines.length === 0) {
+                processedLines = tryParseSerialNumbers(line);
             }
 
-            // If not processed as a range, attempt as serial numbers
-            if (!wasProcessed) {
-                const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
-                if (snKeywordMatch) {
-                    const snIndex = snKeywordMatch.index;
-                    const description = line.substring(0, snIndex).trim();
-                    const keyword = snKeywordMatch[0];
-                    const serialsString = line.substring(snIndex + keyword.length).trim();
-                    const serialParts = serialsString.split(/[,/&;]|\s+/).filter(p => p.trim() !== '');
-                    
-                    let lastFullSerial = "";
-                    let lastPrefix = "";
-
-                    for (const part of serialParts) {
-                        let currentSerial = part.replace(/\.+/g, '').trim();
-                        if (!currentSerial) continue;
-
-                        if (isNaN(currentSerial) || currentSerial.length > 6 || !lastPrefix) {
-                            lastFullSerial = currentSerial;
-                            const match = lastFullSerial.match(/^(.*?)(\d+)$/);
-                            if (match) {
-                                lastPrefix = match[1];
-                            } else {
-                                lastPrefix = lastFullSerial;
-                            }
-                        } else {
-                            currentSerial = lastPrefix + currentSerial;
-                        }
-                        processedLinesForThisLine.push(`${description} ${keyword} ${currentSerial}`);
-                    }
-                    if (processedLinesForThisLine.length > 0) {
-                        wasProcessed = true;
-                    }
-                }
-            }
-
-            // Add processed lines or fall back to the original
-            if (wasProcessed) {
-                allCleansedLines.push(...processedLinesForThisLine);
+            if (processedLines.length === 0 && line.trim()) {
+                allCleansedLines.push(line.trim());
             } else {
-                if (line.trim()) {
-                    allCleansedLines.push(line.trim());
-                }
+                allCleansedLines.push(...processedLines);
             }
         }
 
