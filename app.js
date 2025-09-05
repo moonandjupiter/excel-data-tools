@@ -88,7 +88,6 @@
             await Excel.run(async (context) => {
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const selection = context.workbook.getSelectedRange();
-                // Correctly load both properties in a single, comma-delimited string.
                 selection.load("rowIndex, columnIndex");
                 await context.sync();
 
@@ -115,6 +114,22 @@
             status.textContent = 'Result copied to clipboard!';
             setTimeout(() => { status.textContent = ''; }, 2000);
         }
+    }
+
+    /**
+     * Utility function to add a timeout to a fetch request.
+     * @param {string} url - The URL to fetch.
+     * @param {object} options - The options for the fetch request.
+     * @param {number} timeout - The timeout in milliseconds.
+     * @returns {Promise<Response>} - A promise that resolves with the fetch response or rejects on timeout.
+     */
+    function fetchWithTimeout(url, options, timeout = 20000) { // 20-second timeout
+        return Promise.race([
+            fetch(url, options),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request to local server timed out')), timeout)
+            )
+        ]);
     }
 
     async function processWithGemini() {
@@ -151,14 +166,14 @@
 
             const payload = { "prompt": prompt };
 
-            const response = await fetch(BACKEND_URL, {
+            const response = await fetchWithTimeout(BACKEND_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({ error: `Backend call failed: ${response.status}` }));
                 throw new Error(errorData.error || `Backend call failed: ${response.status}`);
             }
 
@@ -190,9 +205,13 @@
             status.textContent = `Error: ${error.message}`;
         } finally {
             button.disabled = false;
-            if (status.textContent.startsWith('Error')) {
-                 setTimeout(() => { status.textContent = ''; }, 5000);
-            }
+            // The success or error message will have been set, now set a timeout to clear it.
+            setTimeout(() => {
+                // Only clear if it hasn't been replaced by a "Copied!" message
+                if (!status.textContent.includes('clipboard')) {
+                    status.textContent = '';
+                }
+            }, 5000);
         }
     }
 
@@ -287,7 +306,8 @@
             }
         });
 
-        return allCleansedLines;
+        // Final filter to ensure no empty lines are ever returned.
+        return allCleansedLines.filter(line => line && line.trim() !== '');
     }
 
 })();
