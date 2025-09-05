@@ -12,50 +12,150 @@
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- App Logic -->
-    <script type="text/javascript" src="app.js"></script>
-
+    <!-- Custom Styles for a native Excel look -->
     <style>
-        /* A simple style for the active tab */
-        .active-tab {
-            color: #2b6cb0; /* blue-700 */
-            border-bottom: 2px solid #2b6cb0;
-            background-color: #f7fafc; /* gray-100 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #ffffff;
+            color: #212529;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevents scrolling of the whole pane */
+        }
+
+        .taskpane {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+            background-color: #f8f9fa;
+        }
+
+        .tab-button {
+            flex-grow: 1;
+            padding: 12px 10px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 500;
+            color: #495057;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .tab-button:hover {
+            background-color: #e9ecef;
+            color: #0056b3;
+        }
+
+        .tab-button.active-tab {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+
+        .tab-content {
+            flex-grow: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #343a40;
+        }
+
+        .input, .textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .input:focus, .textarea:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            color: #fff;
+            background-color: #007bff;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .status {
+            margin-top: 12px;
+            font-size: 13px;
+            text-align: center;
+            color: #6c757d;
+            height: 18px; /* Reserve space to prevent layout shifts */
         }
     </style>
 </head>
-<body class="bg-white m-0 p-0 font-sans">
-    <main class="h-full">
-        <!-- Tab Navigation -->
-        <div class="flex border-b border-gray-200">
-            <!-- IMPORTANT: The onclick attributes have been removed from these buttons -->
-            <button id="tab-inserter" class="flex-1 py-2 px-4 text-center font-semibold text-gray-700 hover:bg-gray-200 focus:outline-none">
-                Row Inserter
-            </button>
-            <button id="tab-cleanser" class="flex-1 py-2 px-4 text-center font-semibold text-gray-500 hover:bg-gray-200 focus:outline-none">
-                Data Cleanser
-            </button>
-        </div>
+<body class="taskpane">
 
-        <!-- Content Panes -->
-        <div class="p-4">
-            <!-- Excel Row Inserter Tool -->
-            <div id="inserter-content">
-                <label for="rowCount" class="text-sm font-semibold text-gray-700 block mb-1">Number of rows to insert:</label>
-                <input type="number" id="rowCount" placeholder="e.g., 5" class="p-2 border border-gray-300 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button id="generate-rows" class="mt-3 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 focus:outline-none">Insert Rows</button>
-                <p id="rowStatus" class="text-xs text-gray-600 mt-2 h-4"></p>
-            </div>
+    <div class="tabs">
+        <button id="tab-inserter" class="tab-button">Row Inserter</button>
+        <button id="tab-cleanser" class="tab-button">Data Cleanser</button>
+        <button id="tab-gemini" class="tab-button">Gemini Tool</button>
+    </div>
 
-            <!-- Data Cleansing Tool -->
-            <div id="cleanser-content" style="display: none;">
-                <label for="rawData" class="text-sm font-semibold text-gray-700 block mb-1">Paste Raw Data:</label>
-                <textarea id="rawData" rows="5" placeholder="e.g., 24P-449 to 482..." class="p-2 border border-gray-300 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                <button id="cleanse-data" class="mt-3 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 focus:outline-none">Cleanse & Paste Data</button>
-                <p id="cleanseStatus" class="text-xs text-gray-600 mt-2 h-4"></p>
-            </div>
+    <div id="inserter-content" class="tab-content" style="display: none;">
+        <div class="form-group">
+            <label for="rowCount" class="label">Number of Rows to Insert</label>
+            <input type="number" id="rowCount" class="input" placeholder="e.g., 10">
         </div>
-    </main>
+        <button id="generate-rows" class="btn">Insert Rows</button>
+        <p id="rowStatus" class="status"></p>
+    </div>
+
+    <div id="cleanser-content" class="tab-content" style="display: none;">
+        <div class="form-group">
+            <label for="rawData" class="label">Paste Raw Data</label>
+            <textarea id="rawData" rows="8" class="textarea" placeholder="e.g., 17P-07 to 09"></textarea>
+        </div>
+        <button id="cleanse-data" class="btn">Cleanse & Paste Data</button>
+        <p id="cleanseStatus" class="status"></p>
+    </div>
+
+    <div id="gemini-content" class="tab-content" style="display: none;">
+        <div class="form-group">
+            <label for="gemini-input" class="label">Paste Complex Data</label>
+            <textarea id="gemini-input" rows="8" class="textarea" placeholder="e.g., SN: 200108F & 200107F, Brand: Arrow..."></textarea>
+        </div>
+        <button id="process-gemini" class="btn">Process with Gemini</button>
+        <p id="gemini-status" class="status"></p>
+    </div>
+
+    <script type="text/javascript" src="app.js"></script>
+
 </body>
 </html>
 
