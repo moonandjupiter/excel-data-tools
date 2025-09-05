@@ -52,16 +52,24 @@
 
         try {
             await Excel.run(async (context) => {
+                const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const range = context.workbook.getSelectedRange();
-                // Get the last row of the current selection.
+                
+                // Get the last row of the current selection to determine where to insert.
                 const lastRow = range.getLastRow();
                 lastRow.load("rowIndex");
                 await context.sync();
 
-                // Define a range representing the 'count' of entire rows below the selection.
-                const rowsToInsert = lastRow.worksheet.getRangeByIndexes(lastRow.rowIndex + 1, 0, count, 0);
-                // Insert the new rows.
-                rowsToInsert.insert(Excel.InsertShiftDirection.down);
+                // Calculate the A1-style address for the new rows.
+                // Row indices from the API are 0-based, but A1 notation is 1-based.
+                const insertStartRow = lastRow.rowIndex + 2; // +1 to get below the last row, +1 for 1-based index
+                const insertEndRow = insertStartRow + count - 1;
+                const rangeAddress = `${insertStartRow}:${insertEndRow}`;
+                
+                // Get the range for the entire rows and insert.
+                const rangeToInsert = sheet.getRange(rangeAddress);
+                rangeToInsert.insert(Excel.InsertShiftDirection.down);
+                
                 await context.sync();
                 status.textContent = `Successfully inserted ${count} row(s).`;
             });
