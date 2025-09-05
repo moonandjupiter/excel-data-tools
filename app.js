@@ -1,27 +1,42 @@
+/*
+ * Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT license.
+ * See LICENSE in the project root for license information.
+ */
+
+// Initialize the Office Add-in
 Office.onReady((info) => {
     if (info.host === Office.HostType.Excel) {
-        console.log("Add-in is ready for Excel!");
+        document.addEventListener("DOMContentLoaded", function() {
+            // Set the default tab on load
+            switchTab('rowInserter');
+        });
     }
 });
 
-const tabs = ['rowInserter', 'dataCleanser'];
-
-function switchTab(selectedTab) {
+/**
+ * Switches the visible tab in the add-in.
+ * @param {string} tabName The ID of the tab to make active.
+ */
+function switchTab(tabName) {
+    const tabs = ['rowInserter', 'dataCleanser'];
     tabs.forEach(tab => {
+        const content = document.getElementById(`content-${tab}`);
         const tabButton = document.getElementById(`tab-${tab}`);
-        const tabContent = document.getElementById(`content-${tab}`);
-        if (tab === selectedTab) {
+        if (tab === tabName) {
+            content.classList.remove('hidden');
             tabButton.classList.add('tab-active');
-            tabButton.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
-            tabContent.classList.remove('hidden');
+            tabButton.classList.remove('border-transparent', 'text-gray-600', 'hover:text-gray-800', 'hover:border-gray-400');
         } else {
+            content.classList.add('hidden');
             tabButton.classList.remove('tab-active');
-            tabButton.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
-            tabContent.classList.add('hidden');
+            tabButton.classList.add('border-transparent', 'text-gray-600', 'hover:text-gray-800', 'hover:border-gray-400');
         }
     });
 }
 
+/**
+ * Inserts a specified number of empty rows into the current Excel worksheet.
+ */
 async function insertRows() {
     const rowCountInput = document.getElementById('rowCount');
     const status = document.getElementById('rowStatus');
@@ -36,14 +51,15 @@ async function insertRows() {
     try {
         await Excel.run(async (context) => {
             const range = context.workbook.getSelectedRange();
-            const entireRow = range.getEntireRow();
-            
-            for (let i = 0; i < count; i++) {
-                 entireRow.insert(Excel.InsertShiftDirection.down);
-            }
-
+            range.load("address, rowCount");
             await context.sync();
-            status.textContent = `${count} row(s) inserted successfully!`;
+
+            // To insert rows *below* the selection, we start from the row after the selection ends.
+            const insertRange = range.worksheet.getRangeByIndexes(range.rowIndex + range.rowCount, 0, count, 1);
+            insertRange.insert(Excel.InsertShiftDirection.down);
+            await context.sync();
+
+            status.textContent = `${count} row${count > 1 ? 's' : ''} inserted.`;
             setTimeout(() => { status.textContent = ''; }, 3000);
         });
     } catch (error) {
@@ -53,26 +69,40 @@ async function insertRows() {
     }
 }
 
-
+/**
+ * Takes raw text, cleanses it into a list of serial numbers, and pastes the result into Excel.
+ */
 async function cleanseAndPasteData() {
+    const rawData = document.getElementById('rawData').value;
     const status = document.getElementById('status');
-    const cleansedData = getCleansedData();
+    const cleansedData = cleanseData(rawData);
 
-    if (!cleansedData || cleansedData.length === 0) {
-        status.textContent = 'Nothing to paste.';
+    if (cleansedData.length === 0) {
+        status.textContent = 'No data to paste.';
         setTimeout(() => { status.textContent = ''; }, 3000);
         return;
     }
 
     try {
         await Excel.run(async (context) => {
-            const range = context.workbook.getSelectedRange();
-            const resizedRange = range.getResizedRange(cleansedData.length - 1, 0);
-            resizedRange.values = cleansedData;
-            resizedRange.select();
-            
+            const sheet = context.workbook.worksheets.getActiveWorksheet();
+            const range = sheet.getUsedRange();
+            const lastCell = range.getLastCell();
+            lastCell.load('rowIndex');
             await context.sync();
-            status.textContent = 'Data pasted successfully!';
+            
+            // Determine the starting cell for pasting. If the sheet is empty, start at A1. Otherwise, start on the next row.
+            const startRow = range.address ? lastCell.rowIndex + 1 : 0;
+            const targetRange = sheet.getRangeByIndexes(startRow, 0, cleansedData.length, 1);
+            
+            // Format data for Excel's 2D array requirement
+            const formattedData = cleansedData.map(item => [item]);
+
+            targetRange.values = formattedData;
+            targetRange.select();
+            await context.sync();
+
+            status.textContent = `${cleansedData.length} item(s) pasted.`;
             setTimeout(() => { status.textContent = ''; }, 3000);
         });
     } catch (error) {
@@ -82,65 +112,90 @@ async function cleanseAndPasteData() {
     }
 }
 
+/**
+ * The core data parsing and cleansing logic.
+ * Handles ranges, various delimiters, and changing serial number prefixes.
+ * @param {string} rawText The raw input string from the textarea.
+ * @returns {string[]} An array of cleansed, individual serial number lines.
+ */
+function cleanseData(rawText) {
+    const finalOutput = [];
+    const lines = rawText.split('\n').filter(line => line.trim() !== '');
 
-function getCleansedData() {
-    const rawData = document.getElementById('rawData').value;
-    const lines = rawData.split('\n');
-    let result = [];
+    for (const line of lines) {
+        const snIndex = line.toUpperCase().lastIndexOf('SN');
+        let description = "";
+        let serialsStr = line;
 
-    lines.forEach(line => {
-        if (!line.trim()) return;
+        if (snIndex !== -1) {
+            description = line.substring(0, snIndex);
+            serialsStr = line.substring(snIndex + 2).trim();
+        }
 
-        if (line.toLowerCase().includes('sn:')) {
-            const parts = line.split(/sn:/i);
-            const description = parts[0] + 'SN: ';
-            const serials = parts[1].split(/[,&\s]+/).filter(s => s.trim() !== '');
-            let lastFullSerial = '';
+        // Tokenize the string by replacing all delimiters with spaces and then splitting.
+        // This handles commas, slashes, ampersands, and spaces gracefully.
+        let items = serialsStr.replace(/,/g, ' ').replace(/\//g, ' ').replace(/&/g, ' ').split(/\s+/).filter(Boolean);
 
-            serials.forEach(serial => {
-                 let currentSerial = serial.trim();
-                 if (lastFullSerial && !isNaN(currentSerial) && lastFullSerial.match(/[^0-9]/)) {
-                    const prefix = lastFullSerial.slice(0, lastFullSerial.search(/[0-9]+$/));
-                    currentSerial = prefix + currentSerial;
-                 } else {
-                    const nextSerialIndex = serials.indexOf(serial) + 1;
-                    if (nextSerialIndex < serials.length && isNaN(serials[nextSerialIndex].trim()) === false && currentSerial.match(/[a-zA-Z]/)) {
-                       const potentialPrefix = currentSerial.slice(0, currentSerial.search(/[0-9]+$/));
-                       if (potentialPrefix) lastFullSerial = currentSerial;
-                    }
-                 }
-                result.push([description + currentSerial]);
-                if(currentSerial.match(/[a-zA-Z]/)){
-                   lastFullSerial = currentSerial;
-                }
-            });
-        } else {
-            const prefixMatch = line.match(/^([a-zA-Z0-9]+-)/);
-            const prefix = prefixMatch ? prefixMatch[0] : '';
-            const cleanedLine = line.replace(prefix, '').replace(/&/g, ',');
-            const parts = cleanedLine.split(/[,&\s]+/).filter(p => p.trim() !== '');
-            
-            let i = 0;
-            while(i < parts.length){
-                let current = parts[i];
-                 if (current.toLowerCase() === 'to' && i > 0 && i < parts.length - 1) {
-                    let start = parseInt(parts[i - 1]);
-                    let end = parseInt(parts[i + 1]);
-                    if (!isNaN(start) && !isNaN(end)) {
-                        for (let j = start + 1; j <= end; j++) {
-                             result.push([prefix + j]);
+        let expandedSerials = [];
+        let lastPrefix = "";
+
+        for (let i = 0; i < items.length; i++) {
+            let currentItem = items[i];
+
+            // Handle ranges like "449 to 482"
+            if (i > 0 && items[i - 1].toLowerCase() === 'to') {
+                let startItem = expandedSerials.pop(); // The item before "to" is the start of our range
+                let endItem = currentItem;
+
+                let startPrefixMatch = startItem.match(/^(\D*)(\d+)$/);
+                if (startPrefixMatch) {
+                    let prefix = startPrefixMatch[1];
+                    let startNum = parseInt(startPrefixMatch[2], 10);
+                    let endNum = parseInt(endItem, 10);
+
+                    if (!isNaN(startNum) && !isNaN(endNum)) {
+                        expandedSerials.push(startItem); // Add the start item back
+                        lastPrefix = prefix;
+                        // Add all numbers from start+1 to end
+                        for (let j = startNum + 1; j <= endNum; j++) {
+                            expandedSerials.push(prefix + j);
                         }
                     }
-                    i += 2; // Skip 'to' and the end number
-                 } else {
-                    let num = parseInt(current);
-                    if(!isNaN(num)){
-                        result.push([prefix + num]);
-                    }
-                    i++;
-                 }
+                }
+                 continue; // We've processed the range end, so skip to the next item
+            }
+            
+            if (currentItem.toLowerCase() === 'to') {
+                continue; // Skip the "to" keyword itself
+            }
+
+            // Handle individual items (not part of a range)
+            if (/^\d+$/.test(currentItem)) {
+                // Item is purely numeric, so prepend the last known prefix
+                if (lastPrefix) {
+                    expandedSerials.push(lastPrefix + currentItem);
+                }
+            } else {
+                // Item contains non-digits, so it's a full serial number
+                expandedSerials.push(currentItem);
+                // Update the last known prefix for any subsequent numeric-only items
+                const potentialPrefix = currentItem.replace(/\d+$/, '');
+                if (potentialPrefix !== currentItem) { // Ensure a prefix was actually found
+                    lastPrefix = potentialPrefix;
+                }
             }
         }
-    });
-    return result;
+        
+        // Format the final output lines with the original description
+        expandedSerials.forEach(sn => {
+             if (description) {
+                finalOutput.push(`${description.trim()} SN: ${sn}`);
+             } else {
+                finalOutput.push(sn);
+             }
+        });
+    }
+
+    return finalOutput;
 }
+
