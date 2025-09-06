@@ -75,12 +75,9 @@
 
     async function cleanseAndPasteData() {
         const rawData = document.getElementById('rawData').value;
-        // The parseData function returns the initial set of lines.
         let cleansedData = parseData(rawData);
         const status = document.getElementById('cleanseStatus');
 
-        // Add a final, more robust filter here to catch any empty or whitespace-only lines
-        // that might have been produced by the parsing logic. This is the fix.
         cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line));
 
         if (cleansedData.length === 0) {
@@ -121,14 +118,7 @@
         }
     }
 
-    /**
-     * Utility function to add a timeout to a fetch request.
-     * @param {string} url - The URL to fetch.
-     * @param {object} options - The options for the fetch request.
-     * @param {number} timeout - The timeout in milliseconds.
-     * @returns {Promise<Response>} - A promise that resolves with the fetch response or rejects on timeout.
-     */
-    function fetchWithTimeout(url, options, timeout = 10000) { // 10-second timeout
+    function fetchWithTimeout(url, options, timeout = 10000) { 
         return Promise.race([
             fetch(url, options),
             new Promise((_, reject) =>
@@ -220,14 +210,12 @@
 
     function parseData(rawData) {
         const allCleansedLines = [];
-        // Use a more robust regex to check for non-whitespace lines.
         const lines = rawData.split('\n').filter(line => !/^\s*$/.test(line));
 
         lines.forEach(line => {
             let results = [];
             let processed = false;
 
-            // Pattern 1: Simple Ranges (e.g., "17P-07 to 09")
             const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
             if (rangeMatch) {
                 const prefix = rangeMatch[1].trim();
@@ -245,7 +233,6 @@
                 }
             }
 
-            // Pattern 2: Serial Number Lists
             if (!processed) {
                 const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
                 if (snKeywordMatch) {
@@ -273,9 +260,7 @@
                         if (/[a-zA-Z-]/.test(currentSerial)) { 
                             results.push(`${descBefore}${keyword} ${currentSerial}${descAfter}`.trim());
                             const match = currentSerial.match(/^(.*[a-zA-Z-])(\d+)$/);
-                            if (match) {
-                                lastPrefix = match[1];
-                            }
+                            if (match) lastPrefix = match[1];
                         } else if (lastPrefix) { 
                             results.push(`${descBefore}${keyword} ${lastPrefix}${currentSerial}${descAfter}`.trim());
                         } else {
@@ -310,7 +295,6 @@
             }
         });
 
-        // Final filter to ensure no empty or whitespace-only lines are ever returned.
         return allCleansedLines.filter(line => line && !/^\s*$/.test(line));
     }
 
