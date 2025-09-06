@@ -3,9 +3,11 @@
 
     const BACKEND_URL = "http://localhost:8000/process-data";
 
+    // This listener ensures all UI elements are ready before we try to attach events to them.
     document.addEventListener('DOMContentLoaded', initialize);
 
     function initialize() {
+        // --- UI Initialization ---
         document.getElementById("tab-inserter").onclick = () => switchTab('inserter');
         document.getElementById("tab-cleanser").onclick = () => switchTab('cleanser');
         document.getElementById("tab-gemini").onclick = () => switchTab('gemini');
@@ -19,9 +21,15 @@
         document.getElementById('rawData').onfocus = function() { this.select(); };
         document.getElementById('gemini-input').onfocus = function() { this.select(); };
 
+        // Set the initial tab view.
         switchTab('inserter');
 
-        Office.onReady();
+        // The Office.onReady call is only to confirm the host, not for UI setup.
+        Office.onReady((info) => {
+            if (info.host === Office.HostType.Excel) {
+                console.log("Add-in is ready and running in Excel.");
+            }
+        });
     }
 
     function switchTab(tabName) {
