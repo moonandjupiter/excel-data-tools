@@ -249,58 +249,65 @@
                     const lineParts = line.split(keyword);
                     const descBefore = lineParts[0];
                     const everythingAfter = lineParts.slice(1).join(keyword).trim();
-
                     let serialsString = everythingAfter;
                     let descAfter = '';
-
                     const splitMatch = everythingAfter.match(/,(?=\s*(?:Brand|Model|Type|w\/))/i);
                     if (splitMatch) {
                         serialsString = everythingAfter.substring(0, splitMatch.index);
                         descAfter = everythingAfter.substring(splitMatch.index);
                     }
-
                     const parts = serialsString.split(/[,/&]|\s+/).filter(p => p && p.trim() !== '');
                     let lastPrefix = '';
-
                     parts.forEach(part => {
                         let currentSerial = part.trim();
                         if (!currentSerial) return;
-
-                        if (/[a-zA-Z-]/.test(currentSerial)) { 
+                        if (/[a-zA-Z-]/.test(currentSerial)) {
                             results.push(`${descBefore}${keyword} ${currentSerial}${descAfter}`.trim());
                             const match = currentSerial.match(/^(.*[a-zA-Z-])(\d+)$/);
                             if (match) lastPrefix = match[1];
-                        } else if (lastPrefix) { 
+                        } else if (lastPrefix) {
                             results.push(`${descBefore}${keyword} ${lastPrefix}${currentSerial}${descAfter}`.trim());
                         } else {
-                             results.push(`${descBefore}${keyword} ${currentSerial}${descAfter}`.trim());
+                            results.push(`${descBefore}${keyword} ${currentSerial}${descAfter}`.trim());
                         }
                     });
-                    
                     if (results.length > 0) processed = true;
                 }
             }
             
+            // This block handles simple lists like "18D-43 & 44"
+            if (!processed && (line.includes(',') || line.includes('&'))) {
+                const parts = line.split(/[,&]/).map(p => p.trim()).filter(Boolean);
+                if (parts.length > 1) {
+                    let firstPart = parts[0];
+                    let lastPrefix = '';
+                    
+                    // Try to find a prefix from the first part.
+                    const match = firstPart.match(/^(.*[a-zA-Z0-9-])(\d+)$/);
+                    if (match) {
+                        lastPrefix = match[1];
+                    }
+
+                    if (lastPrefix) {
+                        // We found a prefix, so assume all parts are related.
+                        parts.forEach(part => {
+                            // If a part is just a number, prepend the prefix.
+                            if (/^\d+$/.test(part)) {
+                                results.push(lastPrefix + part);
+                            } else {
+                                // Otherwise, assume it's a full serial number.
+                                results.push(part);
+                            }
+                        });
+                        if(results.length > 0) processed = true;
+                    }
+                }
+            }
+
             if (processed) {
                 allCleansedLines.push(...results);
             } else {
-                if (line.includes(',')) {
-                    const parts = line.split(/[,&]/).map(p => p.trim()).filter(Boolean);
-                    let lastPrefix = '';
-                    parts.forEach(part => {
-                        if (/[a-zA-Z-]/.test(part)) {
-                            allCleansedLines.push(part);
-                            const match = part.match(/^(.*[a-zA-Z-])(\d+)$/);
-                            if (match) lastPrefix = match[1];
-                        } else if (lastPrefix) {
-                            allCleansedLines.push(lastPrefix + part);
-                        } else {
-                            allCleansedLines.push(part);
-                        }
-                    });
-                } else {
-                    allCleansedLines.push(line.trim());
-                }
+                allCleansedLines.push(line.trim());
             }
         });
 
