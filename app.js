@@ -123,7 +123,7 @@
      * @param {number} timeout - The timeout in milliseconds.
      * @returns {Promise<Response>} - A promise that resolves with the fetch response or rejects on timeout.
      */
-    function fetchWithTimeout(url, options, timeout = 20000) { // 20-second timeout
+    function fetchWithTimeout(url, options, timeout = 10000) { // 10-second timeout
         return Promise.race([
             fetch(url, options),
             new Promise((_, reject) =>
@@ -205,9 +205,7 @@
             status.textContent = `Error: ${error.message}`;
         } finally {
             button.disabled = false;
-            // The success or error message will have been set, now set a timeout to clear it.
             setTimeout(() => {
-                // Only clear if it hasn't been replaced by a "Copied!" message
                 if (!status.textContent.includes('clipboard')) {
                     status.textContent = '';
                 }
@@ -217,7 +215,8 @@
 
     function parseData(rawData) {
         const allCleansedLines = [];
-        const lines = rawData.split('\n').filter(line => line.trim() !== '');
+        // Use a more robust regex to check for non-whitespace lines.
+        const lines = rawData.split('\n').filter(line => !/^\s*$/.test(line));
 
         lines.forEach(line => {
             let results = [];
@@ -306,8 +305,8 @@
             }
         });
 
-        // Final filter to ensure no empty lines are ever returned.
-        return allCleansedLines.filter(line => line && line.trim() !== '');
+        // Final filter to ensure no empty or whitespace-only lines are ever returned.
+        return allCleansedLines.filter(line => line && !/^\s*$/.test(line));
     }
 
 })();
