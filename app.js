@@ -282,14 +282,14 @@
                     let firstPart = parts[0];
                     let lastPrefix = '';
                     
-                    // Try to find a prefix from the first part.
-                    const match = firstPart.match(/^(.*[a-zA-Z0-9-])(\d+)$/);
+                    // FIXED: Use a more accurate regex to find the prefix, ending in a non-digit.
+                    const match = firstPart.match(/^(.*\D)(\d+)$/);
                     if (match) {
                         lastPrefix = match[1];
                     }
 
                     if (lastPrefix) {
-                        // We found a prefix, so assume all parts are related.
+                        // We found a prefix, so assume all parts are related and expand them.
                         parts.forEach(part => {
                             // If a part is just a number, prepend the prefix.
                             if (/^\d+$/.test(part)) {
@@ -299,8 +299,11 @@
                                 results.push(part);
                             }
                         });
-                        if(results.length > 0) processed = true;
+                    } else {
+                        // No prefix was found, so just treat it as a list of complete items.
+                        results.push(...parts);
                     }
+                    if(results.length > 0) processed = true;
                 }
             }
 
