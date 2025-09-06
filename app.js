@@ -75,8 +75,13 @@
 
     async function cleanseAndPasteData() {
         const rawData = document.getElementById('rawData').value;
-        const cleansedData = parseData(rawData);
+        // The parseData function returns the initial set of lines.
+        let cleansedData = parseData(rawData);
         const status = document.getElementById('cleanseStatus');
+
+        // Add a final, more robust filter here to catch any empty or whitespace-only lines
+        // that might have been produced by the parsing logic. This is the fix.
+        cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line));
 
         if (cleansedData.length === 0) {
             status.textContent = rawData.trim() ? 'Could not parse data.' : 'No data to paste.';
