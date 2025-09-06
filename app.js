@@ -98,8 +98,12 @@
             await Excel.run(async (context) => {
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const selection = context.workbook.getSelectedRange();
-                selection.load("rowIndex, columnIndex");
+                
+                // FIXED: Use the correct array syntax for loading multiple properties.
+                selection.load(["rowIndex", "columnIndex"]);
                 await context.sync();
+
+                console.log(`Writing ${cleansedData.length} rows starting at row: ${selection.rowIndex}, column: ${selection.columnIndex}`);
 
                 const dataToInsert = cleansedData.map(item => [item]);
                 const targetRange = sheet.getRangeByIndexes(selection.rowIndex, selection.columnIndex, dataToInsert.length, 1);
@@ -193,8 +197,12 @@
             await Excel.run(async (context) => {
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const selection = context.workbook.getSelectedRange();
-                selection.load("rowIndex", "columnIndex");
+                
+                // FIXED: Use the correct array syntax for loading multiple properties.
+                selection.load(["rowIndex", "columnIndex"]);
                 await context.sync();
+
+                console.log(`Writing ${cleansedData.length} rows starting at row: ${selection.rowIndex}, column: ${selection.columnIndex}`);
 
                 const dataToInsert = cleansedData.map(item => [item]);
                 const targetRange = sheet.getRangeByIndexes(selection.rowIndex, selection.columnIndex, dataToInsert.length, 1);
