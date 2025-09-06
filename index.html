@@ -1,180 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Excel Data Tools</title>
-
-    <!-- Office JavaScript API -->
-    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-
-    <!-- Tailwind CSS for styling -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" type="text/javascript"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Custom Styles for a native Excel look -->
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #ffffff;
-            color: #212529;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* Prevents scrolling of the whole pane */
+        /* A simple style for the active tab */
+        .active-tab {
+            border-bottom: 2px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
         }
-
-        .taskpane {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #dee2e6;
-            background-color: #f8f9fa;
-        }
-
-        .tab-button {
-            flex-grow: 1;
-            padding: 12px 10px;
-            cursor: pointer;
-            text-align: center;
-            font-weight: 500;
-            color: #495057;
-            border: none;
-            background: none;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s ease-in-out;
-        }
-
-        .tab-button:hover {
-            background-color: #e9ecef;
-            color: #0056b3;
-        }
-
-        .tab-button.active-tab {
-            color: #007bff;
-            border-bottom-color: #007bff;
-        }
-
-        .tab-content {
-            flex-grow: 1;
-            padding: 16px;
-            overflow-y: auto;
-        }
-        
         .hidden {
             display: none;
         }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #343a40;
-        }
-
-        .input, .textarea {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            font-size: 14px;
-            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        }
-
-        .input:focus, .textarea:focus {
-            outline: none;
-            border-color: #80bdff;
-            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-        }
-
-        .btn {
-            display: block;
-            width: 100%;
-            padding: 10px 16px;
-            font-size: 14px;
-            font-weight: 600;
-            text-align: center;
-            color: #fff;
-            background-color: #007bff;
-            border: 1px solid #007bff;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.15s ease-in-out;
-        }
-        
-        .btn-secondary {
-            background-color: #6c757d;
-            border-color: #6c757d;
-        }
-
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-
-        .status {
-            margin-top: 12px;
-            font-size: 13px;
-            text-align: center;
-            color: #6c757d;
-            height: 18px; /* Reserve space to prevent layout shifts */
-        }
     </style>
 </head>
-<body class="taskpane">
-
-    <div class="tabs">
-        <button id="tab-inserter" class="tab-button active-tab">Row Inserter</button>
-        <button id="tab-cleanser" class="tab-button">Data Cleanser</button>
-        <button id="tab-gemini" class="tab-button">Gemini Tool</button>
-    </div>
-
-    <div id="inserter-content" class="tab-content">
-        <div class="form-group">
-            <label for="rowCount" class="label">Number of Rows to Insert</label>
-            <input type="number" id="rowCount" class="input" placeholder="e.g., 10">
+<body class="bg-gray-50 font-sans">
+    <div id="container" class="p-4">
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-gray-200 mb-4">
+            <button id="tab-inserter" class="flex-1 py-2 px-4 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none">Row Inserter</button>
+            <button id="tab-cleanser" class="flex-1 py-2 px-4 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none">Data Cleanser</button>
+            <button id="tab-gemini"   class="flex-1 py-2 px-4 text-sm font-medium text-gray-500 hover:text-gray-700 focus:outline-none">Gemini Tool</button>
         </div>
-        <button id="generate-rows" class="btn">Insert Rows</button>
-        <p id="rowStatus" class="status"></p>
-    </div>
 
-    <div id="cleanser-content" class="tab-content hidden">
-        <div class="form-group">
-            <label for="rawData" class="label">Paste Raw Data</label>
-            <textarea id="rawData" rows="8" class="textarea" placeholder="e.g., 17P-07 to 09"></textarea>
+        <!-- Content Panels -->
+        <div id="inserter-content" class="space-y-4">
+            <div>
+                <label for="rowCount" class="block text-sm font-medium text-gray-700 mb-1">Number of Rows:</label>
+                <input type="number" id="rowCount" placeholder="e.g., 5" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <button id="generate-rows" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Insert Rows
+            </button>
+            <p id="rowStatus" class="text-sm text-center text-gray-500 h-4"></p>
         </div>
-        <button id="cleanse-data" class="btn">Cleanse & Paste Data</button>
-        <p id="cleanseStatus" class="status"></p>
-    </div>
 
-    <div id="gemini-content" class="tab-content hidden">
-        <div class="form-group">
-            <label for="gemini-input" class="label">Paste Complex Data</label>
-            <textarea id="gemini-input" rows="6" class="textarea" placeholder="e.g., SN: 200108F & 200107F, Brand: Arrow..."></textarea>
+        <div id="cleanser-content" class="space-y-4 hidden">
+            <div>
+                <label for="rawData" class="block text-sm font-medium text-gray-700 mb-1">Paste Raw Data:</label>
+                <textarea id="rawData" rows="6" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 17P-07 to 09"></textarea>
+            </div>
+            <button id="cleanse-data" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Cleanse & Paste Data
+            </button>
+            <p id="cleanseStatus" class="text-sm text-center text-gray-500 h-4"></p>
         </div>
-        <button id="process-gemini" class="btn">Process with Local Gemini</button>
-        <p id="gemini-status" class="status"></p>
         
-        <div id="gemini-output-container" class="form-group mt-4 hidden">
-            <label for="gemini-output" class="label">Gemini Result</label>
-            <textarea id="gemini-output" rows="6" class="textarea" readonly></textarea>
-            <button id="copy-gemini-result" class="btn btn-secondary mt-2">Copy Result</button>
+        <div id="gemini-content" class="space-y-4 hidden">
+            <div>
+                <label for="gemini-input" class="block text-sm font-medium text-gray-700 mb-1">Paste Complex Data:</label>
+                <textarea id="gemini-input" rows="6" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., SN: 200108F & 200107F, Brand: Arrow..."></textarea>
+            </div>
+            <button id="process-gemini" class="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400">
+                Process with Gemini
+            </button>
+            <div id="gemini-output-container" class="hidden">
+                 <label for="gemini-output" class="block text-sm font-medium text-gray-700 mb-1 mt-4">Result:</label>
+                 <textarea id="gemini-output" rows="6" class="w-full p-2 bg-gray-100 border border-gray-300 rounded-md" readonly></textarea>
+                 <button id="copy-gemini-result" class="w-full mt-2 bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-700 focus:outline-none">
+                    Copy Result
+                </button>
+            </div>
+            <p id="gemini-status" class="text-sm text-center text-gray-500 h-4"></p>
         </div>
+
     </div>
-
     <script type="text/javascript" src="app.js"></script>
-
 </body>
 </html>
 
