@@ -99,14 +99,10 @@
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const selection = context.workbook.getSelectedRange();
                 
-                // FIXED: Use the correct array syntax for loading multiple properties.
-                selection.load(["rowIndex", "columnIndex"]);
-                await context.sync();
-
-                console.log(`Writing ${cleansedData.length} rows starting at row: ${selection.rowIndex}, column: ${selection.columnIndex}`);
-
                 const dataToInsert = cleansedData.map(item => [item]);
-                const targetRange = sheet.getRangeByIndexes(selection.rowIndex, selection.columnIndex, dataToInsert.length, 1);
+                
+                // FIXED: Use the more robust getResizedRange method relative to the selection.
+                const targetRange = selection.getCell(0, 0).getResizedRange(dataToInsert.length - 1, 0);
                 targetRange.values = dataToInsert;
 
                 await context.sync();
@@ -198,15 +194,12 @@
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const selection = context.workbook.getSelectedRange();
                 
-                // FIXED: Use the correct array syntax for loading multiple properties.
-                selection.load(["rowIndex", "columnIndex"]);
-                await context.sync();
-
-                console.log(`Writing ${cleansedData.length} rows starting at row: ${selection.rowIndex}, column: ${selection.columnIndex}`);
-
                 const dataToInsert = cleansedData.map(item => [item]);
-                const targetRange = sheet.getRangeByIndexes(selection.rowIndex, selection.columnIndex, dataToInsert.length, 1);
+
+                // FIXED: Use the more robust getResizedRange method relative to the selection.
+                const targetRange = selection.getCell(0, 0).getResizedRange(dataToInsert.length - 1, 0);
                 targetRange.values = dataToInsert;
+
                 await context.sync();
                 status.textContent = `Successfully pasted ${cleansedData.length} items.`;
             });
