@@ -79,6 +79,9 @@
                 const targetRange = selection.getCell(0, 0).getResizedRange(dataToInsert.length - 1, 0);
                 targetRange.values = dataToInsert;
 
+                // After pasting, re-select the starting cell to return focus to the worksheet.
+                selection.getCell(0, 0).select();
+
                 await context.sync();
                 status.textContent = `Successfully pasted ${cleansedData.length} items.`;
             });
