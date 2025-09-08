@@ -7,6 +7,7 @@
     function initialize() {
         // --- UI Initialization ---
         document.getElementById("generate-rows").onclick = generateAndInsertRows;
+        document.getElementById("get-from-selection").onclick = getFromSelection;
         document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
 
         document.getElementById('rowCount').onfocus = function() { this.select(); };
@@ -36,22 +37,16 @@
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const range = context.workbook.getSelectedRange();
                 
-                // Load the row index and row count of the current selection.
                 range.load(["rowIndex", "rowCount"]);
                 await context.sync();
 
                 const startRow = range.rowIndex;
                 const numSelectedRows = range.rowCount;
 
-                // Loop backwards from the last selected row to the first to avoid shifting indexes.
                 for (let i = numSelectedRows - 1; i >= 0; i--) {
                     const currentRowIndex = startRow + i;
-                    
-                    // To insert *below* the current row, we insert *at* the next row.
-                    // The address is 1-based, while rowIndex is 0-based, so we add 2.
                     const insertAtRowNumber = currentRowIndex + 2;
                     const insertRangeAddress = `${insertAtRowNumber}:${insertAtRowNumber + countToInsert - 1}`;
-                    
                     sheet.getRange(insertRangeAddress).insert(Excel.InsertShiftDirection.down);
                 }
                 
@@ -62,6 +57,28 @@
         } catch (error) {
             console.error(error);
             status.textContent = 'Error: Could not insert rows.';
+        }
+        setTimeout(() => { status.textContent = ''; }, 3000);
+    }
+
+    async function getFromSelection() {
+        const rawDataTextarea = document.getElementById('rawData');
+        const status = document.getElementById('cleanseStatus');
+
+        try {
+            await Excel.run(async (context) => {
+                const range = context.workbook.getSelectedRange();
+                range.load("values");
+                await context.sync();
+
+                // Convert the 2D array of values into a single string with newlines.
+                const selectionText = range.values.map(row => row.join("\t")).join("\n");
+                rawDataTextarea.value = selectionText;
+                status.textContent = "Data loaded from selection.";
+            });
+        } catch (error) {
+            console.error(error);
+            status.textContent = "Error: Could not get data.";
         }
         setTimeout(() => { status.textContent = ''; }, 3000);
     }
@@ -89,9 +106,7 @@
                 const targetRange = selection.getCell(0, 0).getResizedRange(dataToInsert.length - 1, 0);
                 targetRange.values = dataToInsert;
 
-                // After pasting, re-select the starting cell to return focus to the worksheet.
                 selection.getCell(0, 0).select();
-
                 await context.sync();
                 status.textContent = `Successfully pasted ${cleansedData.length} items.`;
             });
