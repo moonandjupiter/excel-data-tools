@@ -83,7 +83,6 @@
 
                 if (cleansedData.length === 0) {
                     status.textContent = "No data to paste after cleansing.";
-                    // Use a return within the Excel.run to stop execution
                     await context.sync(); 
                     return; 
                 }
