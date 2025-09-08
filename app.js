@@ -7,6 +7,7 @@
     function initialize() {
         // --- UI Initialization ---
         document.getElementById("generate-rows").onclick = generateAndInsertRows;
+        document.getElementById("get-cleanse-paste").onclick = getCleanseAndPaste;
         document.getElementById("get-from-selection").onclick = getFromSelection;
         document.getElementById("cleanse-data").onclick = cleanseAndPasteData;
 
@@ -61,6 +62,47 @@
         setTimeout(() => { status.textContent = ''; }, 3000);
     }
 
+    async function getCleanseAndPaste() {
+        const rawDataTextarea = document.getElementById('rawData');
+        const status = document.getElementById('cleanseStatus');
+
+        try {
+            await Excel.run(async (context) => {
+                // Part 1: Get data from the current selection
+                const selection = context.workbook.getSelectedRange();
+                selection.load("values");
+                await context.sync();
+                const selectionText = selection.values.map(row => row.join("\t")).join("\n");
+                
+                // Update the textarea so the user can see what was processed
+                rawDataTextarea.value = selectionText;
+
+                // Part 2: Cleanse the data and paste it
+                let cleansedData = parseData(selectionText);
+                cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line));
+
+                if (cleansedData.length === 0) {
+                    status.textContent = "No data to paste after cleansing.";
+                    // Use a return within the Excel.run to stop execution
+                    await context.sync(); 
+                    return; 
+                }
+
+                const dataToInsert = cleansedData.map(item => [item]);
+                const targetRange = selection.getCell(0, 0).getResizedRange(dataToInsert.length - 1, 0);
+                targetRange.values = dataToInsert;
+
+                selection.getCell(0, 0).select();
+                await context.sync();
+                status.textContent = `Pasted ${cleansedData.length} cleansed items.`;
+            });
+        } catch (error) {
+            console.error(error);
+            status.textContent = "Error: Could not process selection.";
+        }
+        setTimeout(() => { status.textContent = ''; }, 3000);
+    }
+
     async function getFromSelection() {
         const rawDataTextarea = document.getElementById('rawData');
         const status = document.getElementById('cleanseStatus');
@@ -71,7 +113,6 @@
                 range.load("values");
                 await context.sync();
 
-                // Convert the 2D array of values into a single string with newlines.
                 const selectionText = range.values.map(row => row.join("\t")).join("\n");
                 rawDataTextarea.value = selectionText;
                 status.textContent = "Data loaded from selection.";
