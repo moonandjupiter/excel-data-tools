@@ -35,15 +35,18 @@
             <h2 class="text-base font-semibold text-gray-800">Data Cleansing Tool</h2>
             <p class="text-xs text-gray-600 mb-3">Expand and paste ranged data into the sheet.</p>
 
-            <label for="rawData" class="block text-xs font-medium text-gray-700 mb-1">Raw Data:</label>
+            <label for="rawData" class="block text-xs font-medium text-gray-700 mb-1">Raw Data (for manual pasting):</label>
             <textarea id="rawData" rows="5" class="w-full p-2 bg-gray-800 text-gray-200 border border-gray-600 rounded-sm text-xs focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., 18D-43 & 44"></textarea>
             
-            <div class="grid grid-cols-2 gap-2 mt-2">
+            <div class="grid grid-cols-3 gap-2 mt-2">
+                <button id="get-cleanse-paste" class="w-full bg-purple-600 text-white font-semibold py-2 px-3 rounded-sm hover:bg-purple-700 transition-colors text-xs">
+                    From Selection
+                </button>
                 <button id="get-from-selection" class="w-full bg-gray-600 text-white font-semibold py-2 px-3 rounded-sm hover:bg-gray-700 transition-colors text-xs">
-                    Get from Selection
+                    Get Text
                 </button>
                 <button id="cleanse-data" class="w-full bg-blue-600 text-white font-semibold py-2 px-3 rounded-sm hover:bg-blue-700 transition-colors text-xs">
-                    Cleanse & Paste
+                    Paste Text
                 </button>
             </div>
             <p id="cleanseStatus" class="text-xs text-green-600 mt-2 h-4"></p>
