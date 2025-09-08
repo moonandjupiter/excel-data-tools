@@ -22,10 +22,10 @@
 
     async function generateAndInsertRows() {
         const rowCountInput = document.getElementById('rowCount');
-        const count = parseInt(rowCountInput.value, 10);
+        const countToInsert = parseInt(rowCountInput.value, 10);
         const status = document.getElementById('rowStatus');
 
-        if (isNaN(count) || count < 1) {
+        if (isNaN(countToInsert) || countToInsert < 1) {
             status.textContent = 'Please enter a valid number.';
             setTimeout(() => { status.textContent = ''; }, 2000);
             return;
@@ -36,18 +36,28 @@
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const range = context.workbook.getSelectedRange();
                 
-                const lastRowOfSelection = range.getEntireRow().getLastRow();
-                lastRowOfSelection.load("rowIndex");
+                // Load the row index and row count of the current selection.
+                range.load(["rowIndex", "rowCount"]);
                 await context.sync();
 
-                const insertStartRow = lastRowOfSelection.rowIndex + 2;
-                const insertEndRow = insertStartRow + count - 1;
-                const rangeAddress = `${insertStartRow}:${insertEndRow}`;
-                
-                sheet.getRange(rangeAddress).insert(Excel.InsertShiftDirection.down);
+                const startRow = range.rowIndex;
+                const numSelectedRows = range.rowCount;
+
+                // Loop backwards from the last selected row to the first to avoid shifting indexes.
+                for (let i = numSelectedRows - 1; i >= 0; i--) {
+                    const currentRowIndex = startRow + i;
+                    
+                    // To insert *below* the current row, we insert *at* the next row.
+                    // The address is 1-based, while rowIndex is 0-based, so we add 2.
+                    const insertAtRowNumber = currentRowIndex + 2;
+                    const insertRangeAddress = `${insertAtRowNumber}:${insertAtRowNumber + countToInsert - 1}`;
+                    
+                    sheet.getRange(insertRangeAddress).insert(Excel.InsertShiftDirection.down);
+                }
                 
                 await context.sync();
-                status.textContent = `Successfully inserted ${count} row(s).`;
+                const totalInserted = numSelectedRows * countToInsert;
+                status.textContent = `Successfully inserted ${totalInserted} row(s).`;
             });
         } catch (error) {
             console.error(error);
