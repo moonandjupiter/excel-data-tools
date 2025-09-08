@@ -165,23 +165,63 @@
             let results = [];
             let processed = false;
 
-            const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
-            if (rangeMatch) {
-                const prefix = rangeMatch[1].trim();
-                const startStr = rangeMatch[2];
-                const endStr = rangeMatch[3];
-                const startNum = parseInt(startStr, 10);
-                const endNum = parseInt(endStr, 10);
-                const padLength = startStr.length;
+            // Pattern for multiple ranges separated by semicolons
+            if (line.includes(';')) {
+                const segments = line.split(';').map(s => s.trim());
+                let lastPrefix = '';
+                let multiRangeProcessed = false;
 
-                if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-                    for (let i = startNum; i <= endNum; i++) {
-                        results.push(`${prefix}${String(i).padStart(padLength, '0')}`);
+                segments.forEach(segment => {
+                    // Match a range, which might or might not have a text prefix
+                    const rangeMatch = segment.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
+                    if (rangeMatch) {
+                        let prefix = rangeMatch[1].trim();
+                        const startStr = rangeMatch[2];
+                        const endStr = rangeMatch[3];
+                        
+                        if (prefix) {
+                            lastPrefix = prefix; // Found a new prefix, so we store it
+                        } else {
+                            prefix = lastPrefix; // No prefix found, so use the last one we saw
+                        }
+                        
+                        const startNum = parseInt(startStr, 10);
+                        const endNum = parseInt(endStr, 10);
+                        const padLength = startStr.length;
+
+                        if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+                            for (let i = startNum; i <= endNum; i++) {
+                                results.push(`${prefix}${String(i).padStart(padLength, '0')}`);
+                            }
+                            multiRangeProcessed = true;
+                        }
                     }
-                    if (results.length > 0) processed = true;
+                });
+                 if (multiRangeProcessed) processed = true;
+            }
+
+            // Pattern 1: Simple Ranges (if not handled by multi-range)
+            if (!processed) {
+                const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
+                if (rangeMatch) {
+                    const prefix = rangeMatch[1].trim();
+                    const startStr = rangeMatch[2];
+                    const endStr = rangeMatch[3];
+                    const startNum = parseInt(startStr, 10);
+                    const endNum = parseInt(endStr, 10);
+                    const padLength = startStr.length;
+
+                    if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+                        for (let i = startNum; i <= endNum; i++) {
+                            results.push(`${prefix}${String(i).padStart(padLength, '0')}`);
+                        }
+                        if (results.length > 0) processed = true;
+                    }
                 }
             }
 
+
+            // Pattern 2: Serial Number Lists
             if (!processed) {
                 const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
                 if (snKeywordMatch) {
@@ -215,6 +255,7 @@
                 }
             }
             
+            // Pattern 3: Simple comma/ampersand lists with implied prefixes
             if (!processed && (line.includes(',') || line.includes('&'))) {
                 const parts = line.split(/[,&]/).map(p => p.trim()).filter(Boolean);
                 if (parts.length > 1) {
@@ -224,16 +265,11 @@
                     const match = firstPart.match(/^(.*\D)(\d+)$/);
                     if (match) {
                         lastPrefix = match[1];
-                    }
-
-                    if (lastPrefix) {
-                        parts.forEach(part => {
-                            if (/^\d+$/.test(part)) {
-                                results.push(lastPrefix + part);
-                            } else {
-                                results.push(part);
-                            }
-                        });
+                        results.push(firstPart); // Add the first full part
+                        // Process the rest of the parts
+                        for (let i = 1; i < parts.length; i++) {
+                            results.push(lastPrefix + parts[i]);
+                        }
                     } else {
                         results.push(...parts);
                     }
