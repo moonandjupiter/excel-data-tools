@@ -8,26 +8,21 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* A simple style for the active tab to match the Excel UI */
-        .active-tab {
-            border-bottom: 2px solid #285e8e;
-            color: #285e8e;
-            font-weight: 600;
-        }
-        .tab-button {
-            transition: all 0.2s ease-in-out;
+        body {
+            background-color: #f3f4f6; /* A slightly off-white background for the main pane */
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans text-sm">
-    <div id="content-main" class="p-4">
+<body class="font-sans text-sm">
+    <div id="content-main" class="p-3">
 
         <!-- Section 1: Excel Row Inserter -->
-        <div id="inserter-content">
+        <div class="bg-white p-4 rounded-md shadow-sm">
             <h2 class="text-base font-semibold text-gray-800">Excel Row Inserter</h2>
-            <p class="text-xs text-gray-600 mb-3">Quickly insert multiple empty rows below your selection.</p>
+            <p class="text-xs text-gray-600 mb-3">Insert empty rows below your selection(s).</p>
             
             <label for="rowCount" class="block text-xs font-medium text-gray-700 mb-1">Number of rows to insert:</label>
-            <input type="number" id="rowCount" placeholder="e.g., 5" class="w-full p-2 border border-gray-300 rounded-sm text-xs focus:ring-blue-500 focus:border-blue-500">
+            <input type="number" id="rowCount" placeholder="e.g., 5" class="w-full p-2 bg-gray-800 text-gray-200 border border-gray-600 rounded-sm text-xs focus:ring-blue-500 focus:border-blue-500">
             
             <button id="generate-rows" class="w-full bg-blue-600 text-white font-semibold py-2 px-3 rounded-sm mt-2 hover:bg-blue-700 transition-colors text-xs">
                 Insert Rows
@@ -35,19 +30,22 @@
             <p id="rowStatus" class="text-xs text-green-600 mt-2 h-4"></p>
         </div>
 
-        <hr class="border-gray-300 my-4">
-
         <!-- Section 2: Data Cleansing Tool -->
-        <div id="cleanser-content">
+        <div class="bg-white p-4 rounded-md shadow-sm mt-3">
             <h2 class="text-base font-semibold text-gray-800">Data Cleansing Tool</h2>
-            <p class="text-xs text-gray-600 mb-3">Paste compressed or ranged data to expand and paste it into the sheet.</p>
+            <p class="text-xs text-gray-600 mb-3">Expand and paste ranged data into the sheet.</p>
 
-            <label for="rawData" class="block text-xs font-medium text-gray-700 mb-1">Paste Raw Data:</label>
-            <textarea id="rawData" rows="5" class="w-full p-2 border border-gray-300 rounded-sm text-xs focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., 18D-43 & 44"></textarea>
+            <label for="rawData" class="block text-xs font-medium text-gray-700 mb-1">Raw Data:</label>
+            <textarea id="rawData" rows="5" class="w-full p-2 bg-gray-800 text-gray-200 border border-gray-600 rounded-sm text-xs focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., 18D-43 & 44"></textarea>
             
-            <button id="cleanse-data" class="w-full bg-blue-600 text-white font-semibold py-2 px-3 rounded-sm mt-2 hover:bg-blue-700 transition-colors text-xs">
-                Cleanse & Paste Data
-            </button>
+            <div class="grid grid-cols-2 gap-2 mt-2">
+                <button id="get-from-selection" class="w-full bg-gray-600 text-white font-semibold py-2 px-3 rounded-sm hover:bg-gray-700 transition-colors text-xs">
+                    Get from Selection
+                </button>
+                <button id="cleanse-data" class="w-full bg-blue-600 text-white font-semibold py-2 px-3 rounded-sm hover:bg-blue-700 transition-colors text-xs">
+                    Cleanse & Paste
+                </button>
+            </div>
             <p id="cleanseStatus" class="text-xs text-green-600 mt-2 h-4"></p>
         </div>
 
