@@ -165,39 +165,49 @@
             let results = [];
             let processed = false;
 
-            // Pattern for multiple ranges separated by semicolons
+            // Pattern for multiple ranges/numbers separated by semicolons
             if (line.includes(';')) {
                 const segments = line.split(';').map(s => s.trim());
-                let lastPrefix = '';
-                let multiRangeProcessed = false;
+                let prefix = '';
+                let processedInThisBlock = false;
+                
+                // Find the prefix from the first segment that contains non-numeric characters at the beginning
+                const prefixMatch = segments[0].match(/^(.*?)\d/);
+                if (prefixMatch) {
+                    prefix = prefixMatch[1].trim();
+                }
 
                 segments.forEach(segment => {
-                    // Match a range, which might or might not have a text prefix
-                    const rangeMatch = segment.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
-                    if (rangeMatch) {
-                        let prefix = rangeMatch[1].trim();
-                        const startStr = rangeMatch[2];
-                        const endStr = rangeMatch[3];
-                        
-                        if (prefix) {
-                            lastPrefix = prefix; // Found a new prefix, so we store it
-                        } else {
-                            prefix = lastPrefix; // No prefix found, so use the last one we saw
-                        }
-                        
+                    // Normalize " to " to "-" and remove extra whitespace
+                    const normalizedSegment = segment.replace(/\s+to\s+/i, '-').replace(/\s/g, '');
+                    const rangeMatch = normalizedSegment.match(/(\d+)-(\d+)/);
+                    
+                    if (rangeMatch) { // It's a range
+                        const startStr = rangeMatch[1];
+                        const endStr = rangeMatch[2];
                         const startNum = parseInt(startStr, 10);
                         const endNum = parseInt(endStr, 10);
                         const padLength = startStr.length;
-
+                        
                         if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
                             for (let i = startNum; i <= endNum; i++) {
                                 results.push(`${prefix}${String(i).padStart(padLength, '0')}`);
                             }
-                            multiRangeProcessed = true;
+                            processedInThisBlock = true;
                         }
+                    } else if (/^\d+$/.test(normalizedSegment)) { // It's a single number
+                        const numStr = normalizedSegment;
+                        // Get padding from the first number found in the original line for consistency
+                        const firstNumInLine = line.match(/\d+/);
+                        const padLength = firstNumInLine ? firstNumInLine[0].length : numStr.length;
+                        results.push(`${prefix}${String(numStr).padStart(padLength, '0')}`);
+                        processedInThisBlock = true;
                     }
                 });
-                 if (multiRangeProcessed) processed = true;
+
+                if (processedInThisBlock) {
+                    processed = true;
+                }
             }
 
             // Pattern 1: Simple Ranges (if not handled by multi-range)
