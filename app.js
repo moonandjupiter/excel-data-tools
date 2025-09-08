@@ -212,18 +212,19 @@
 
             // Pattern 1: Simple Ranges (if not handled by multi-range)
             if (!processed) {
-                const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)$/i);
+                const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)(\D*)$/i);
                 if (rangeMatch) {
                     const prefix = rangeMatch[1].trim();
                     const startStr = rangeMatch[2];
                     const endStr = rangeMatch[3];
+                    const suffix = rangeMatch[4].trim();
                     const startNum = parseInt(startStr, 10);
                     const endNum = parseInt(endStr, 10);
                     const padLength = startStr.length;
 
                     if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
                         for (let i = startNum; i <= endNum; i++) {
-                            results.push(`${prefix}${String(i).padStart(padLength, '0')}`);
+                            results.push(`${prefix}${String(i).padStart(padLength, '0')}${suffix}`);
                         }
                         if (results.length > 0) processed = true;
                     }
