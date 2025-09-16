@@ -68,22 +68,22 @@
 
         try {
             await Excel.run(async (context) => {
+                // Part 1: Get data from the current selection
                 const selection = context.workbook.getSelectedRange();
                 selection.load("values");
                 await context.sync();
                 const selectionText = selection.values.map(row => row.join("\t")).join("\n");
                 
-                let cleansedData = parseData(selectionText);
-                
-                // Update the textarea with the formatted, numbered list for display
-                const displayData = formatForDisplay(cleansedData);
-                rawDataTextarea.value = displayData;
+                // Update the textarea so the user can see what was processed
+                rawDataTextarea.value = selectionText;
 
-                // The data to be pasted remains the original un-numbered version
-                cleansedData = cleansedData.filter(line => (line && !/^\s*$/.test(line)) || line === '');
+                // Part 2: Cleanse the data and paste it
+                let cleansedData = parseData(selectionText);
+                cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line) || line === '');
 
                 if (cleansedData.length === 0) {
                     status.textContent = "No data to paste after cleansing.";
+                    await context.sync(); 
                     return; 
                 }
 
@@ -124,17 +124,11 @@
     }
 
     async function cleanseAndPasteData() {
-        const rawDataTextarea = document.getElementById('rawData');
-        const rawData = rawDataTextarea.value;
+        const rawData = document.getElementById('rawData').value;
         let cleansedData = parseData(rawData);
         const status = document.getElementById('cleanseStatus');
-        
-        // Update textarea with the formatted version for visual feedback
-        const displayData = formatForDisplay(cleansedData);
-        rawDataTextarea.value = displayData;
 
-        // Filter the actual data to be pasted
-        cleansedData = cleansedData.filter(line => (line && !/^\s*$/.test(line)) || line === '');
+        cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line) || line === '');
 
         if (cleansedData.length === 0) {
             status.textContent = rawData.trim() ? 'Could not parse data.' : 'No data to paste.';
@@ -163,26 +157,13 @@
         setTimeout(() => { status.textContent = ''; }, 3000);
     }
     
-    function formatForDisplay(cleansedData) {
-        let displayLines = [];
-        let counter = 1;
-        cleansedData.forEach(line => {
-            if (line === '') {
-                displayLines.push('');
-                counter = 1; // Reset counter for the next block
-            } else {
-                displayLines.push(`${counter}. ${line}`);
-                counter++;
-            }
-        });
-        return displayLines.join('\n');
-    }
-
     function parseData(rawData) {
         const allCleansedLines = [];
+        // Split the data into blocks separated by one or more blank lines
         const blocks = rawData.split(/\n\s*\n/);
 
         blocks.forEach((block, blockIndex) => {
+            // Within each block, get only the unique, non-empty lines
             const linesInBlock = block.split('\n').filter(line => !/^\s*$/.test(line));
             const uniqueLines = [...new Set(linesInBlock)];
 
@@ -190,6 +171,7 @@
                 let results = [];
                 let processed = false;
 
+                // Pattern for multiple ranges/numbers separated by semicolons
                 if (line.includes(';')) {
                     const segments = line.split(';').map(s => s.trim());
                     let prefix = '';
@@ -231,6 +213,7 @@
                     }
                 }
 
+                // Pattern 1: Simple Ranges (if not handled by multi-range)
                 if (!processed) {
                     const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)(\D*)$/i);
                     if (rangeMatch) {
@@ -251,6 +234,7 @@
                     }
                 }
 
+                // Pattern 2: Serial Number Lists
                 if (!processed) {
                     const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
                     if (snKeywordMatch) {
@@ -284,6 +268,7 @@
                     }
                 }
                 
+                // Pattern 3: Simple comma/ampersand lists with implied prefixes
                 if (!processed && (line.includes(',') || line.includes('&'))) {
                     const parts = line.split(/[,&]/).map(p => p.trim()).filter(Boolean);
                     if (parts.length > 1) {
@@ -311,6 +296,7 @@
                 }
             });
 
+            // Add a blank line between the processed blocks, but not after the last one
             if (blockIndex < blocks.length - 1) {
                 allCleansedLines.push('');
             }
