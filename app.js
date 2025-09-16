@@ -79,7 +79,7 @@
 
                 // Part 2: Cleanse the data and paste it
                 let cleansedData = parseData(selectionText);
-                cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line));
+                cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line) || line === '');
 
                 if (cleansedData.length === 0) {
                     status.textContent = "No data to paste after cleansing.";
@@ -128,7 +128,7 @@
         let cleansedData = parseData(rawData);
         const status = document.getElementById('cleanseStatus');
 
-        cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line));
+        cleansedData = cleansedData.filter(line => line && !/^\s*$/.test(line) || line === '');
 
         if (cleansedData.length === 0) {
             status.textContent = rawData.trim() ? 'Could not parse data.' : 'No data to paste.';
@@ -159,143 +159,150 @@
     
     function parseData(rawData) {
         const allCleansedLines = [];
-        const lines = rawData.split('\n').filter(line => !/^\s*$/.test(line));
+        // Split the data into blocks separated by one or more blank lines
+        const blocks = rawData.split(/\n\s*\n/);
 
-        lines.forEach(line => {
-            let results = [];
-            let processed = false;
+        blocks.forEach((block, blockIndex) => {
+            // Within each block, get only the unique, non-empty lines
+            const linesInBlock = block.split('\n').filter(line => !/^\s*$/.test(line));
+            const uniqueLines = [...new Set(linesInBlock)];
 
-            // Pattern for multiple ranges/numbers separated by semicolons
-            if (line.includes(';')) {
-                const segments = line.split(';').map(s => s.trim());
-                let prefix = '';
-                let processedInThisBlock = false;
-                
-                // Find the prefix from the first segment that contains non-numeric characters at the beginning
-                const prefixMatch = segments[0].match(/^(.*?)\d/);
-                if (prefixMatch) {
-                    prefix = prefixMatch[1].trim();
+            uniqueLines.forEach(line => {
+                let results = [];
+                let processed = false;
+
+                // Pattern for multiple ranges/numbers separated by semicolons
+                if (line.includes(';')) {
+                    const segments = line.split(';').map(s => s.trim());
+                    let prefix = '';
+                    let processedInThisBlock = false;
+                    
+                    const prefixMatch = segments[0].match(/^(.*?)\d/);
+                    if (prefixMatch) {
+                        prefix = prefixMatch[1].trim();
+                    }
+
+                    segments.forEach(segment => {
+                        const normalizedSegment = segment.replace(/\s+to\s+/i, '-').replace(/\s/g, '');
+                        const rangeMatch = normalizedSegment.match(/(\d+)-(\d+)/);
+                        
+                        if (rangeMatch) {
+                            const startStr = rangeMatch[1];
+                            const endStr = rangeMatch[2];
+                            const startNum = parseInt(startStr, 10);
+                            const endNum = parseInt(endStr, 10);
+                            const padLength = startStr.length;
+                            
+                            if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
+                                for (let i = startNum; i <= endNum; i++) {
+                                    results.push(`${prefix}${String(i).padStart(padLength, '0')}`);
+                                }
+                                processedInThisBlock = true;
+                            }
+                        } else if (/^\d+$/.test(normalizedSegment)) {
+                            const numStr = normalizedSegment;
+                            const firstNumInLine = line.match(/\d+/);
+                            const padLength = firstNumInLine ? firstNumInLine[0].length : numStr.length;
+                            results.push(`${prefix}${String(numStr).padStart(padLength, '0')}`);
+                            processedInThisBlock = true;
+                        }
+                    });
+
+                    if (processedInThisBlock) {
+                        processed = true;
+                    }
                 }
 
-                segments.forEach(segment => {
-                    // Normalize " to " to "-" and remove extra whitespace
-                    const normalizedSegment = segment.replace(/\s+to\s+/i, '-').replace(/\s/g, '');
-                    const rangeMatch = normalizedSegment.match(/(\d+)-(\d+)/);
-                    
-                    if (rangeMatch) { // It's a range
-                        const startStr = rangeMatch[1];
-                        const endStr = rangeMatch[2];
+                // Pattern 1: Simple Ranges (if not handled by multi-range)
+                if (!processed) {
+                    const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)(\D*)$/i);
+                    if (rangeMatch) {
+                        const prefix = rangeMatch[1].trim();
+                        const startStr = rangeMatch[2];
+                        const endStr = rangeMatch[3];
+                        const suffix = rangeMatch[4].trim();
                         const startNum = parseInt(startStr, 10);
                         const endNum = parseInt(endStr, 10);
                         const padLength = startStr.length;
-                        
+
                         if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
                             for (let i = startNum; i <= endNum; i++) {
-                                results.push(`${prefix}${String(i).padStart(padLength, '0')}`);
+                                results.push(`${prefix}${String(i).padStart(padLength, '0')}${suffix}`);
                             }
-                            processedInThisBlock = true;
+                            if (results.length > 0) processed = true;
                         }
-                    } else if (/^\d+$/.test(normalizedSegment)) { // It's a single number
-                        const numStr = normalizedSegment;
-                        // Get padding from the first number found in the original line for consistency
-                        const firstNumInLine = line.match(/\d+/);
-                        const padLength = firstNumInLine ? firstNumInLine[0].length : numStr.length;
-                        results.push(`${prefix}${String(numStr).padStart(padLength, '0')}`);
-                        processedInThisBlock = true;
                     }
-                });
-
-                if (processedInThisBlock) {
-                    processed = true;
                 }
-            }
 
-            // Pattern 1: Simple Ranges (if not handled by multi-range)
-            if (!processed) {
-                const rangeMatch = line.match(/^(.*?)(\d+)\s*(?:to|-)\s*(\d+)(\D*)$/i);
-                if (rangeMatch) {
-                    const prefix = rangeMatch[1].trim();
-                    const startStr = rangeMatch[2];
-                    const endStr = rangeMatch[3];
-                    const suffix = rangeMatch[4].trim();
-                    const startNum = parseInt(startStr, 10);
-                    const endNum = parseInt(endStr, 10);
-                    const padLength = startStr.length;
-
-                    if (!isNaN(startNum) && !isNaN(endNum) && endNum >= startNum) {
-                        for (let i = startNum; i <= endNum; i++) {
-                            results.push(`${prefix}${String(i).padStart(padLength, '0')}${suffix}`);
+                // Pattern 2: Serial Number Lists
+                if (!processed) {
+                    const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
+                    if (snKeywordMatch) {
+                        const keyword = snKeywordMatch[0];
+                        const lineParts = line.split(keyword);
+                        const descBefore = lineParts[0];
+                        const everythingAfter = lineParts.slice(1).join(keyword).trim();
+                        let serialsString = everythingAfter;
+                        let descAfter = '';
+                        const splitMatch = everythingAfter.match(/,(?=\s*(?:Brand|Model|Type|w\/))/i);
+                        if (splitMatch) {
+                            serialsString = everythingAfter.substring(0, splitMatch.index);
+                            descAfter = everythingAfter.substring(splitMatch.index);
                         }
+                        const parts = serialsString.split(/[,/&]|\s+/).filter(p => p && p.trim() !== '');
+                        let lastPrefix = '';
+                        parts.forEach(part => {
+                            let currentSerial = part.trim();
+                            if (!currentSerial) return;
+                            if (/[a-zA-Z-]/.test(currentSerial)) {
+                                results.push(`${descBefore}${keyword} ${currentSerial}${descAfter}`.trim());
+                                const match = currentSerial.match(/^(.*[a-zA-Z-])(\d+)$/);
+                                if (match) lastPrefix = match[1];
+                            } else if (lastPrefix) {
+                                results.push(`${descBefore}${keyword} ${lastPrefix}${currentSerial}${descAfter}`.trim());
+                            } else {
+                                results.push(`${descBefore}${keyword} ${currentSerial}${descAfter}`.trim());
+                            }
+                        });
                         if (results.length > 0) processed = true;
                     }
                 }
-            }
-
-
-            // Pattern 2: Serial Number Lists
-            if (!processed) {
-                const snKeywordMatch = line.match(/(S#s|S#|SN:|Ser\. No\.|SN)/i);
-                if (snKeywordMatch) {
-                    const keyword = snKeywordMatch[0];
-                    const lineParts = line.split(keyword);
-                    const descBefore = lineParts[0];
-                    const everythingAfter = lineParts.slice(1).join(keyword).trim();
-                    let serialsString = everythingAfter;
-                    let descAfter = '';
-                    const splitMatch = everythingAfter.match(/,(?=\s*(?:Brand|Model|Type|w\/))/i);
-                    if (splitMatch) {
-                        serialsString = everythingAfter.substring(0, splitMatch.index);
-                        descAfter = everythingAfter.substring(splitMatch.index);
-                    }
-                    const parts = serialsString.split(/[,/&]|\s+/).filter(p => p && p.trim() !== '');
-                    let lastPrefix = '';
-                    parts.forEach(part => {
-                        let currentSerial = part.trim();
-                        if (!currentSerial) return;
-                        if (/[a-zA-Z-]/.test(currentSerial)) {
-                            results.push(`${descBefore}${keyword} ${currentSerial}${descAfter}`.trim());
-                            const match = currentSerial.match(/^(.*[a-zA-Z-])(\d+)$/);
-                            if (match) lastPrefix = match[1];
-                        } else if (lastPrefix) {
-                            results.push(`${descBefore}${keyword} ${lastPrefix}${currentSerial}${descAfter}`.trim());
+                
+                // Pattern 3: Simple comma/ampersand lists with implied prefixes
+                if (!processed && (line.includes(',') || line.includes('&'))) {
+                    const parts = line.split(/[,&]/).map(p => p.trim()).filter(Boolean);
+                    if (parts.length > 1) {
+                        let firstPart = parts[0];
+                        let lastPrefix = '';
+                        
+                        const match = firstPart.match(/^(.*\D)(\d+)$/);
+                        if (match) {
+                            lastPrefix = match[1];
+                            results.push(firstPart);
+                            for (let i = 1; i < parts.length; i++) {
+                                results.push(lastPrefix + parts[i]);
+                            }
                         } else {
-                            results.push(`${descBefore}${keyword} ${currentSerial}${descAfter}`.trim());
+                            results.push(...parts);
                         }
-                    });
-                    if (results.length > 0) processed = true;
-                }
-            }
-            
-            // Pattern 3: Simple comma/ampersand lists with implied prefixes
-            if (!processed && (line.includes(',') || line.includes('&'))) {
-                const parts = line.split(/[,&]/).map(p => p.trim()).filter(Boolean);
-                if (parts.length > 1) {
-                    let firstPart = parts[0];
-                    let lastPrefix = '';
-                    
-                    const match = firstPart.match(/^(.*\D)(\d+)$/);
-                    if (match) {
-                        lastPrefix = match[1];
-                        results.push(firstPart); // Add the first full part
-                        // Process the rest of the parts
-                        for (let i = 1; i < parts.length; i++) {
-                            results.push(lastPrefix + parts[i]);
-                        }
-                    } else {
-                        results.push(...parts);
+                        if(results.length > 0) processed = true;
                     }
-                    if(results.length > 0) processed = true;
                 }
-            }
 
-            if (processed) {
-                allCleansedLines.push(...results);
-            } else {
-                allCleansedLines.push(line.trim());
+                if (processed) {
+                    allCleansedLines.push(...results);
+                } else {
+                    allCleansedLines.push(line.trim());
+                }
+            });
+
+            // Add a blank line between the processed blocks, but not after the last one
+            if (blockIndex < blocks.length - 1) {
+                allCleansedLines.push('');
             }
         });
 
-        return allCleansedLines.filter(line => line && !/^\s*$/.test(line));
+        return allCleansedLines;
     }
 
 })();
